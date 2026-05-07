@@ -1,0 +1,303 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
+
+export default function LessonPage() {
+  const router = useRouter()
+  const params = useParams()
+  const lessonId = params.lessonId
+
+  const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [lesson, setLesson] = useState(null)
+  const [course, setCourse] = useState(null)
+  const [questions, setQuestions] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  // Quiz state
+  const [qIndex, setQIndex] = useState(0)
+  const [selected, setSelected] = useState(null)
+  const [checked, setChecked] = useState(false)
+  const [correctCount, setCorrectCount] = useState(0)
+  const [hearts, setHearts] = useState(5)
+  const [completed, setCompleted] = useState(false)
+
+  useEffect(() => {
+    async function loadData() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/login')
+        return
+      }
+      setUser(user)
+
+      // Load profile (for hearts/xp)
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      setProfile(profileData)
+      setHearts(profileData?.hearts ?? 5)
+
+      // Load lesson with parent unit and course
+      const { data: lessonData, error: lessonError } = await supabase
+        .from('lessons')
+        .select(`
+          *,
+          unit:units (
+            *,
+            course:courses (*)
+          )
+        `)
+        .eq('id', lessonId)
+        .single()
+
+      if (lessonError || !lessonData) {
+        setLoading(false)
+        return
+      }
+      setLesson(lessonData)
+      setCourse(lessonData.unit?.course)
+
+      // Load questions for this lesson
+      const { data: qData } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('lesson_id', lessonId)
+        .order('sort_order')
+      setQuestions(qData || [])
+
+      setLoading(false)
+    }
+    loadData()
+  }, [lessonId, router])
+
+  function onCheck() {
+    if (selected === null) return
+    setChecked(true)
+    const q = questions[qIndex]
+    if (selected === q.answer) {
+      setCorrectCount((c) => c + 1)
+    } else {
+      setHearts((h) => Math.max(0, h - 1))
+    }
+  }
+
+  async function onContinue() {
+    if (qIndex + 1 < questions.length) {
+      setQIndex(qIndex + 1)
+      setSelected(null)
+      setChecked(false)
+    } else {
+      // Lesson complete — save progress + update XP/hearts
+      const finalCorrect = correctCount + (selected === questions[qIndex].answer ? 1 : 0)
+      const score = finalCorrect / questions.length
+      const xpEarned = finalCorrect * 10
+
+      // Save progress (upsert: insert or update if exists)
+      const dueAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString() // 2 days from now
+      await supabase.from('progress').upsert(
+        {
+          user_id: user.id,
+          lesson_id: lessonId,
+          score,
+          completed_at: new Date().toISOString(),
+          due_at: dueAt,
+        },
+        { onConflict: 'user_id,lesson_id' }
+      )
+
+      // Update profile XP/streak/hearts
+      await supabase
+        .from('profiles')
+        .update({
+          xp: (profile?.xp ?? 0) + xpEarned,
+          streak: (profile?.streak ?? 0) + 1,
+          hearts: hearts,
+        })
+        .eq('id', user.id)
+
+      setCompleted(true)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-amber-50 flex items-center justify-center">
+        <p className="text-gray-600 font-mono text-sm">Loading lesson...</p>
+      </div>
+    )
+  }
+
+  if (!lesson) {
+    return (
+      <div className="min-h-screen bg-amber-50 flex flex-col items-center justify-center p-8 text-center">
+        <h1 className="text-3xl font-black tracking-tight mb-3">Lesson not found</h1>
+        <Link href="/dashboard" className="px-6 py-3 bg-orange-500 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]">
+          ← Back to dashboard
+        </Link>
+      </div>
+    )
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-amber-50 flex flex-col items-center justify-center p-8 text-center">
+        <h1 className="text-3xl font-black tracking-tight mb-3">No questions yet</h1>
+        <p className="text-gray-600 mb-6">This lesson does not have any questions yet. Come back later!</p>
+        <Link
+          href={course ? `/courses/${course.id}` : '/dashboard'}
+          className="px-6 py-3 bg-orange-500 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]"
+        >
+          ← Back to lesson tree
+        </Link>
+      </div>
+    )
+  }
+
+  // ============ COMPLETION SCREEN ============
+  if (completed) {
+    const accuracy = Math.round((correctCount / questions.length) * 100)
+    const xpEarned = correctCount * 10
+
+    return (
+      <div className="min-h-screen bg-amber-50 flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-36 h-36 bg-yellow-400 border-[4px] border-gray-900 rounded-full flex items-center justify-center text-6xl mb-7 shadow-[0_8px_0_#1a1d29]">
+          {accuracy === 100 ? '🏆' : accuracy >= 70 ? '⭐' : '💪'}
+        </div>
+        <h1 className="text-5xl font-black tracking-tight mb-3 leading-none">
+          Quest complete:
+          <br />
+          <span className="text-orange-500 italic font-normal">{lesson.title}</span>
+        </h1>
+
+        <div className="flex gap-4 mt-8 mb-9 flex-wrap justify-center">
+          <div className="bg-amber-100 border-[3px] border-gray-900 rounded-xl px-7 py-4 shadow-[4px_4px_0_#1a1d29] min-w-32">
+            <p className="text-xs font-mono tracking-widest uppercase text-gray-600 mb-1">XP earned</p>
+            <p className="text-3xl font-black text-yellow-600">+{xpEarned}</p>
+          </div>
+          <div className="bg-amber-100 border-[3px] border-gray-900 rounded-xl px-7 py-4 shadow-[4px_4px_0_#1a1d29] min-w-32">
+            <p className="text-xs font-mono tracking-widest uppercase text-gray-600 mb-1">Accuracy</p>
+            <p className="text-3xl font-black text-teal-600">{accuracy}%</p>
+          </div>
+          <div className="bg-amber-100 border-[3px] border-gray-900 rounded-xl px-7 py-4 shadow-[4px_4px_0_#1a1d29] min-w-32">
+            <p className="text-xs font-mono tracking-widest uppercase text-gray-600 mb-1">Streak</p>
+            <p className="text-3xl font-black text-orange-500">🔥 +1</p>
+          </div>
+        </div>
+
+        <Link
+          href={course ? `/courses/${course.id}` : '/dashboard'}
+          className="px-7 py-3 bg-green-600 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#1a1d29] transition-all"
+        >
+          Back to lesson tree
+        </Link>
+      </div>
+    )
+  }
+
+  // ============ QUIZ SCREEN ============
+  const q = questions[qIndex]
+  const isCorrect = selected === q.answer
+  const progress = ((qIndex + (checked ? 1 : 0)) / questions.length) * 100
+
+  return (
+    <div className="min-h-screen bg-amber-50 flex flex-col">
+      {/* Top bar with progress + hearts */}
+      <div className="bg-amber-100 border-b-[2px] border-gray-900 px-6 py-3 flex items-center gap-5">
+        <Link
+          href={course ? `/courses/${course.id}` : '/dashboard'}
+          className="w-10 h-10 border-2 border-gray-900 rounded-full bg-white flex items-center justify-center text-lg font-bold shadow-[2px_2px_0_#1a1d29]"
+          aria-label="Close"
+        >
+          ✕
+        </Link>
+
+        <div className="flex-1 h-4 bg-amber-200 border-2 border-gray-900 rounded-full overflow-hidden relative">
+          <div
+            className="h-full bg-teal-400 transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+
+        <div className="flex gap-1 items-center font-black text-pink-700">
+          <span className="text-xl">♥</span>
+          <span>{hearts}</span>
+        </div>
+      </div>
+
+      {/* Question body */}
+      <div className="flex-1 max-w-2xl w-full mx-auto px-6 py-12">
+        <p className="text-xs font-mono tracking-widest uppercase text-orange-600 mb-3">
+          // {lesson.title} — Question {qIndex + 1} of {questions.length}
+        </p>
+        <h2 className="text-3xl md:text-4xl font-black tracking-tight leading-tight mb-9">
+          Choose the best answer.
+        </h2>
+        <div className="bg-amber-100 border-l-4 border-orange-500 px-5 py-4 mb-7 rounded-r-xl italic text-gray-700 leading-relaxed">
+          {q.stem}
+        </div>
+
+        <div className="flex flex-col gap-3 mb-8">
+          {q.choices.map((c, i) => {
+            let cls = 'bg-amber-100 border-[2.5px] border-gray-900 rounded-xl px-5 py-4 shadow-[4px_4px_0_#1a1d29] text-left flex items-center gap-3 font-medium transition-all'
+            if (checked) {
+              if (i === q.answer) cls = 'bg-green-200 border-[2.5px] border-green-700 rounded-xl px-5 py-4 shadow-[4px_4px_0_#1a1d29] text-left flex items-center gap-3 font-medium'
+              else if (i === selected) cls = 'bg-red-200 border-[2.5px] border-red-700 rounded-xl px-5 py-4 shadow-[4px_4px_0_#1a1d29] text-left flex items-center gap-3 font-medium'
+              else cls += ' opacity-50'
+            } else if (i === selected) {
+              cls = 'bg-yellow-100 border-[2.5px] border-yellow-700 rounded-xl px-5 py-4 shadow-[4px_4px_0_#1a1d29] text-left flex items-center gap-3 font-medium'
+            } else {
+              cls += ' hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#1a1d29] cursor-pointer'
+            }
+            return (
+              <button
+                key={i}
+                className={cls}
+                onClick={() => !checked && setSelected(i)}
+                disabled={checked}
+              >
+                <span className="w-8 h-8 border-2 border-gray-900 rounded-lg bg-white flex items-center justify-center font-black text-sm flex-shrink-0">
+                  {String.fromCharCode(65 + i)}
+                </span>
+                <span>{c}</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Bottom feedback bar */}
+      {!checked ? (
+        <div className="bg-amber-100 border-t-[3px] border-gray-900 px-6 py-5 flex justify-end">
+          <button
+            disabled={selected === null}
+            onClick={onCheck}
+            className="px-8 py-3 bg-orange-500 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#1a1d29] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-[4px_4px_0_#1a1d29]"
+          >
+            Check answer
+          </button>
+        </div>
+      ) : (
+        <div className={`border-t-[3px] border-gray-900 px-6 py-5 flex items-center justify-between gap-5 flex-wrap ${isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
+          <div className="flex-1 min-w-60">
+            <h3 className={`text-2xl font-black mb-1 ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+              {isCorrect ? 'Excellent.' : 'Not quite.'}
+            </h3>
+            <p className="text-sm text-gray-700 leading-relaxed">{q.explanation}</p>
+          </div>
+          <button
+            onClick={onContinue}
+            className={`px-8 py-3 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#1a1d29] transition-all ${isCorrect ? 'bg-green-600' : 'bg-orange-500'}`}
+          >
+            {qIndex + 1 < questions.length ? 'Continue' : 'Finish'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
