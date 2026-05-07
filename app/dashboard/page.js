@@ -178,6 +178,7 @@ export default function DashboardPage() {
           <br />
           logged in as <strong>{user?.email}</strong> · role: <strong>{profile?.role || 'student'}</strong> · {courses.length} courses loaded
         </div>
+        <p className="text-xs text-gray-400 font-mono mt-4">v1.00</p>
       </div>
     </div>
   )
