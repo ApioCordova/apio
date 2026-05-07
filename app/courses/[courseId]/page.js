@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 
 export default function CoursePage() {
@@ -20,7 +21,6 @@ export default function CoursePage() {
 
   useEffect(() => {
     async function loadData() {
-      // 1. Auth check
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         router.push('/login')
@@ -28,7 +28,6 @@ export default function CoursePage() {
       }
       setUser(user)
 
-      // 2. Load profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
@@ -36,7 +35,6 @@ export default function CoursePage() {
         .single()
       setProfile(profileData)
 
-      // 3. Load course with units and lessons
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
         .select(`
@@ -54,7 +52,6 @@ export default function CoursePage() {
         return
       }
 
-      // Sort units and lessons by sort_order
       const sortedUnits = (courseData.units || [])
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((u) => ({
@@ -65,7 +62,6 @@ export default function CoursePage() {
       setCourse(courseData)
       setUnits(sortedUnits)
 
-      // 4. Load this user's completed lessons
       const { data: progressData } = await supabase
         .from('progress')
         .select('lesson_id')
@@ -79,7 +75,7 @@ export default function CoursePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-amber-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f6fbf8' }}>
         <p className="text-gray-600 font-mono text-sm">Loading course...</p>
       </div>
     )
@@ -87,10 +83,10 @@ export default function CoursePage() {
 
   if (!course) {
     return (
-      <div className="min-h-screen bg-amber-50 flex flex-col items-center justify-center p-8">
+      <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ background: '#f6fbf8' }}>
         <h1 className="text-3xl font-black tracking-tight mb-3">Course not found</h1>
         <p className="text-gray-600 mb-6">This course doesn't exist or isn't published yet.</p>
-        <Link href="/dashboard" className="px-6 py-3 bg-orange-500 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]">
+        <Link href="/dashboard" className="px-6 py-3 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]" style={{ background: '#00b395' }}>
           ← Back to courses
         </Link>
       </div>
@@ -98,24 +94,22 @@ export default function CoursePage() {
   }
 
   return (
-    <div className="min-h-screen bg-amber-50">
+    <div className="min-h-screen" style={{ background: '#f6fbf8' }}>
       {/* Top bar */}
-      <div className="bg-amber-100 border-b-[3px] border-gray-900 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+      <div className="border-b-[3px] border-gray-900 px-6 py-3 flex items-center justify-between sticky top-0 z-40" style={{ background: '#b4f1e7' }}>
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-orange-500 border-2 border-gray-900 rounded-lg flex items-center justify-center text-white font-black shadow-[3px_3px_0_#1a1d29] -rotate-6">
-            A
-          </div>
+          <Image src="/apio-logo.png" alt="Apio" width={36} height={36} className="rounded-lg" />
           <span className="text-2xl font-black tracking-tight">Apio</span>
         </Link>
 
         <div className="flex gap-2">
-          <div className="px-3 py-1.5 bg-orange-100 border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
+          <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
             🔥 {profile?.streak ?? 0}
           </div>
-          <div className="px-3 py-1.5 bg-yellow-100 border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
+          <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
             ⚡ {profile?.xp ?? 0}
           </div>
-          <div className="px-3 py-1.5 bg-pink-100 border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
+          <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
             ♥ {profile?.hearts ?? 5}
           </div>
         </div>
@@ -125,13 +119,13 @@ export default function CoursePage() {
       <div className="max-w-3xl mx-auto p-6 pb-20">
         <Link
           href="/dashboard"
-          className="inline-flex items-center gap-1 px-4 py-2 mb-6 bg-amber-100 border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
+          className="inline-flex items-center gap-1 px-4 py-2 mb-6 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
         >
           ← All courses
         </Link>
 
         <div className="mb-2">
-          <p className="text-xs font-mono tracking-widest text-orange-600 uppercase">
+          <p className="text-xs font-mono tracking-widest uppercase" style={{ color: '#00b395' }}>
             // {course.short_title}
           </p>
         </div>
@@ -146,15 +140,14 @@ export default function CoursePage() {
           const circumference = 2 * Math.PI * 26
           const dashOffset = circumference - (pct / 100) * circumference
 
-          // first un-completed lesson is the "current" node
           const currentLessonId = unit.lessons.find((l) => !completedLessonIds.has(l.id))?.id
 
           return (
             <div key={unit.id} className="mb-12">
               {/* Unit banner */}
-              <div className="bg-gray-900 text-amber-50 rounded-2xl p-6 mb-8 flex justify-between items-center flex-wrap gap-4 shadow-[6px_6px_0_#1a1d29]">
+              <div className="bg-gray-900 text-white rounded-2xl p-6 mb-8 flex justify-between items-center flex-wrap gap-4 shadow-[6px_6px_0_#1a1d29]">
                 <div>
-                  <p className="text-xs font-mono tracking-widest text-yellow-400 mb-1">
+                  <p className="text-xs font-mono tracking-widest mb-1" style={{ color: '#00b395' }}>
                     UNIT {unit.number} — {course.short_title.toUpperCase()}
                   </p>
                   <h2 className="text-2xl font-black tracking-tight leading-tight">{unit.name}</h2>
@@ -167,14 +160,14 @@ export default function CoursePage() {
                       cy="32"
                       r="26"
                       fill="none"
-                      stroke="#f4b942"
+                      stroke="#00b395"
                       strokeWidth="6"
                       strokeDasharray={circumference}
                       strokeDashoffset={dashOffset}
                       strokeLinecap="round"
                     />
                   </svg>
-                  <div className="absolute inset-0 flex items-center justify-center text-yellow-400 font-black text-sm">
+                  <div className="absolute inset-0 flex items-center justify-center font-black text-sm" style={{ color: '#00b395' }}>
                     {Math.round(pct)}%
                   </div>
                 </div>
@@ -192,14 +185,20 @@ export default function CoursePage() {
                     prevLesson &&
                     !completedLessonIds.has(prevLesson.id)
 
-                  // Zigzag offset
                   const offsets = [0, 80, 120, 80, -40]
                   const offset = offsets[idx % 5]
 
-                  let nodeBg = 'bg-amber-100 text-gray-900'
-                  if (isCompleted) nodeBg = 'bg-yellow-400 text-gray-900'
-                  else if (isCurrent) nodeBg = 'bg-orange-500 text-amber-50 animate-pulse'
-                  else if (isLocked) nodeBg = 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  let nodeBg = 'bg-white text-gray-900'
+                  let nodeStyle = {}
+                  if (isCompleted) {
+                    nodeBg = 'text-white'
+                    nodeStyle = { background: '#00b395' }
+                  } else if (isCurrent) {
+                    nodeBg = 'text-white animate-pulse'
+                    nodeStyle = { background: '#00b395' }
+                  } else if (isLocked) {
+                    nodeBg = 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }
 
                   return (
                     <div
@@ -215,7 +214,7 @@ export default function CoursePage() {
                           }}
                           disabled={isLocked}
                           className={`${nodeBg} w-22 h-22 rounded-full border-[4px] border-gray-900 shadow-[0_6px_0_#1a1d29] hover:translate-y-[-2px] hover:shadow-[0_8px_0_#1a1d29] transition-all flex items-center justify-center text-3xl disabled:hover:translate-y-0 disabled:hover:shadow-[0_6px_0_#1a1d29]`}
-                          style={{ width: '92px', height: '92px' }}
+                          style={{ width: '92px', height: '92px', ...nodeStyle }}
                         >
                           {isCompleted ? '✓' : isLocked ? '🔒' : lesson.icon}
                         </button>
@@ -225,12 +224,13 @@ export default function CoursePage() {
                         </p>
 
                         {popupLessonId === lesson.id && !isLocked && (
-                          <div className="absolute top-0 left-[110%] z-30 w-60 bg-gray-900 text-amber-50 p-4 rounded-xl shadow-[4px_4px_0_#1a1d29]">
+                          <div className="absolute top-0 left-[110%] z-30 w-60 bg-gray-900 text-white p-4 rounded-xl shadow-[4px_4px_0_#1a1d29]">
                             <h4 className="font-black text-base mb-1">{lesson.title}</h4>
                             <p className="text-xs text-gray-300 mb-3">{lesson.description}</p>
                             <Link
                               href={`/lessons/${lesson.id}`}
-                              className="block text-center w-full px-3 py-2 bg-orange-500 text-amber-50 rounded-full font-bold text-sm border-2 border-amber-50 hover:bg-orange-600 transition-colors"
+                              className="block text-center w-full px-3 py-2 text-white rounded-full font-bold text-sm border-2 border-white hover:opacity-80 transition-colors"
+                              style={{ background: '#00b395' }}
                             >
                               {isCompleted ? 'Practice again' : 'Start lesson'} →
                             </Link>

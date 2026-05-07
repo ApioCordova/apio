@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 
 export default function DashboardPage() {
@@ -14,7 +15,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function loadData() {
-      // 1. Get the logged-in user
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         router.push('/login')
@@ -22,7 +22,6 @@ export default function DashboardPage() {
       }
       setUser(user)
 
-      // 2. Load the user's profile (XP, streak, hearts, role)
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
@@ -30,7 +29,6 @@ export default function DashboardPage() {
         .single()
       setProfile(profileData)
 
-      // 3. Load all published courses with their unit/lesson counts
       const { data: coursesData } = await supabase
         .from('courses')
         .select(`
@@ -56,7 +54,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-amber-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f6fbf8' }}>
         <p className="text-gray-600 font-mono text-sm">Loading your courses...</p>
       </div>
     )
@@ -66,26 +64,23 @@ export default function DashboardPage() {
   const isAdmin = profile?.role === 'admin' || profile?.role === 'editor'
 
   return (
-    <div className="min-h-screen bg-amber-50">
+    <div className="min-h-screen" style={{ background: '#f6fbf8' }}>
       {/* Top bar */}
-      <div className="bg-amber-100 border-b-[3px] border-gray-900 px-6 py-3 flex items-center justify-between">
+      <div className="border-b-[3px] border-gray-900 px-6 py-3 flex items-center justify-between" style={{ background: '#b4f1e7' }}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-orange-500 border-2 border-gray-900 rounded-lg flex items-center justify-center text-white font-black shadow-[3px_3px_0_#1a1d29] -rotate-6">
-            A
-          </div>
+          <Image src="/apio-logo.png" alt="Apio" width={36} height={36} className="rounded-lg" />
           <span className="text-2xl font-black tracking-tight">Apio</span>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Stats pills */}
           <div className="flex gap-2">
-            <div className="px-3 py-1.5 bg-orange-100 border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
+            <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
               🔥 {profile?.streak ?? 0}
             </div>
-            <div className="px-3 py-1.5 bg-yellow-100 border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
+            <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
               ⚡ {profile?.xp ?? 0}
             </div>
-            <div className="px-3 py-1.5 bg-pink-100 border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
+            <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
               ♥ {profile?.hearts ?? 5}
             </div>
           </div>
@@ -93,7 +88,7 @@ export default function DashboardPage() {
           {isAdmin && (
             <Link
               href="/admin"
-              className="px-3 py-1.5 bg-gray-900 text-white rounded-full text-xs font-bold tracking-widest uppercase shadow-[2px_2px_0_#1a1d29] hover:bg-orange-500 transition-colors"
+              className="px-3 py-1.5 bg-gray-900 text-white rounded-full text-xs font-bold tracking-widest uppercase shadow-[2px_2px_0_#1a1d29] hover:opacity-80 transition-colors"
             >
               Admin
             </Link>
@@ -111,11 +106,11 @@ export default function DashboardPage() {
       {/* Main content */}
       <div className="max-w-5xl mx-auto p-8">
         <div className="mb-10">
-          <p className="text-xs font-mono tracking-widest text-orange-600 uppercase mb-2">
+          <p className="text-xs font-mono tracking-widest uppercase mb-2" style={{ color: '#00b395' }}>
             // Welcome back
           </p>
           <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-none mb-3">
-            Hey, <span className="text-orange-500 italic font-normal">{displayName}</span>.
+            Hey, <span className="italic font-normal" style={{ color: '#00b395' }}>{displayName}</span>.
           </h1>
           <p className="text-gray-700 max-w-xl">
             Pick a course to continue your AP quest. Bite-sized lessons, real exam-style questions, progress that follows you.
@@ -131,19 +126,20 @@ export default function DashboardPage() {
               0
             ) || 0
 
+            // Gray tones for history (gov), red tones for calc
             const bgClass =
               course.tone === 'gov'
-                ? 'bg-gradient-to-br from-purple-100 to-pink-100'
+                ? 'bg-gradient-to-br from-gray-100 to-gray-200'
                 : course.tone === 'calc'
-                ? 'bg-gradient-to-br from-teal-100 to-emerald-100'
-                : 'bg-amber-100'
+                ? 'bg-gradient-to-br from-red-100 to-rose-200'
+                : 'bg-gray-100'
 
             const iconBgClass =
               course.tone === 'gov'
-                ? 'bg-purple-700 text-white'
+                ? 'bg-gray-700 text-white'
                 : course.tone === 'calc'
-                ? 'bg-teal-400 text-gray-900'
-                : 'bg-amber-200'
+                ? 'bg-red-500 text-white'
+                : 'bg-gray-200'
 
             return (
               <Link
@@ -168,7 +164,6 @@ export default function DashboardPage() {
             )
           })}
 
-          {/* "More coming soon" placeholder */}
           <div className="bg-white border-[3px] border-dashed border-gray-400 rounded-2xl p-6 opacity-60 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 bg-gray-100 border-2 border-gray-400 rounded-xl flex items-center justify-center text-2xl font-black mb-3">
               +
@@ -178,9 +173,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Debug / verification info */}
         <div className="mt-12 p-4 bg-white border-2 border-dashed border-gray-300 rounded-xl text-xs font-mono text-gray-500">
-          <span className="text-orange-600">// connected to supabase</span>
+          <span style={{ color: '#00b395' }}>// connected to supabase</span>
           <br />
           logged in as <strong>{user?.email}</strong> · role: <strong>{profile?.role || 'student'}</strong> · {courses.length} courses loaded
         </div>

@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
-  const [mode, setMode] = useState('signin') // 'signin' or 'signup'
+  const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -65,14 +66,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-amber-50 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: '#f6fbf8' }}>
       <Link href="/" className="mb-8 flex items-center gap-3">
-        <div className="w-10 h-10 bg-orange-500 border-2 border-gray-900 rounded-lg flex items-center justify-center text-white font-black shadow-[3px_3px_0_#1a1d29] -rotate-6">
-          A
-        </div>
-        <span className="text-2xl font-black tracking-tight">
-          Apio
-        </span>
+        <Image src="/apio-logo.png" alt="Apio" width={40} height={40} className="rounded-lg" />
+        <span className="text-2xl font-black tracking-tight">Apio</span>
       </Link>
 
       <div className="w-full max-w-md bg-white border-[3px] border-gray-900 rounded-2xl p-8 shadow-[8px_8px_0_#1a1d29]">
@@ -111,7 +108,8 @@ export default function LoginPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="w-full p-3 mb-3 border-[2.5px] border-gray-900 rounded-xl bg-amber-50 font-medium focus:outline-none focus:bg-white"
+              className="w-full p-3 mb-3 border-[2.5px] border-gray-900 rounded-xl font-medium focus:outline-none focus:bg-white"
+              style={{ background: '#f6fbf8' }}
             />
           )}
           <input
@@ -120,7 +118,8 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full p-3 mb-3 border-[2.5px] border-gray-900 rounded-xl bg-amber-50 font-medium focus:outline-none focus:bg-white"
+            className="w-full p-3 mb-3 border-[2.5px] border-gray-900 rounded-xl font-medium focus:outline-none focus:bg-white"
+            style={{ background: '#f6fbf8' }}
           />
           <input
             type="password"
@@ -129,12 +128,14 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={8}
-            className="w-full p-3 mb-4 border-[2.5px] border-gray-900 rounded-xl bg-amber-50 font-medium focus:outline-none focus:bg-white"
+            className="w-full p-3 mb-4 border-[2.5px] border-gray-900 rounded-xl font-medium focus:outline-none focus:bg-white"
+            style={{ background: '#f6fbf8' }}
           />
           <button
             type="submit"
             disabled={loading}
-            className="w-full p-3 bg-orange-500 text-white border-[2.5px] border-gray-900 rounded-xl font-bold uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#1a1d29] transition-all disabled:opacity-50"
+            className="w-full p-3 text-white border-[2.5px] border-gray-900 rounded-xl font-bold uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#1a1d29] transition-all disabled:opacity-50"
+            style={{ background: '#00b395' }}
           >
             {loading ? 'Loading...' : mode === 'signup' ? 'Create account' : 'Sign in'}
           </button>

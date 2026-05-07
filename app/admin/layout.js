@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 
 export default function AdminLayout({ children }) {
@@ -40,7 +41,7 @@ export default function AdminLayout({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-amber-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f6fbf8' }}>
         <p className="text-gray-600 font-mono text-sm">Checking access...</p>
       </div>
     )
@@ -48,7 +49,7 @@ export default function AdminLayout({ children }) {
 
   if (accessDenied) {
     return (
-      <div className="min-h-screen bg-amber-50 flex flex-col items-center justify-center p-8 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ background: '#f6fbf8' }}>
         <div className="w-20 h-20 bg-red-200 border-[3px] border-gray-900 rounded-2xl flex items-center justify-center text-3xl mb-5 shadow-[4px_4px_0_#1a1d29]">
           🔒
         </div>
@@ -59,7 +60,8 @@ export default function AdminLayout({ children }) {
         </p>
         <Link
           href="/dashboard"
-          className="px-6 py-3 bg-orange-500 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#1a1d29] transition-all"
+          className="px-6 py-3 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#1a1d29] transition-all"
+          style={{ background: '#00b395' }}
         >
           ← Back to dashboard
         </Link>
@@ -74,15 +76,13 @@ export default function AdminLayout({ children }) {
   ]
 
   return (
-    <div className="min-h-screen bg-amber-50">
+    <div className="min-h-screen" style={{ background: '#f6fbf8' }}>
       {/* Top bar */}
-      <div className="bg-amber-100 border-b-[3px] border-gray-900 px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+      <div className="border-b-[3px] border-gray-900 px-6 py-3 flex items-center justify-between sticky top-0 z-40" style={{ background: '#b4f1e7' }}>
         <Link href="/dashboard" className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-orange-500 border-2 border-gray-900 rounded-lg flex items-center justify-center text-white font-black shadow-[3px_3px_0_#1a1d29] -rotate-6">
-            A
-          </div>
+          <Image src="/apio-logo.png" alt="Apio" width={36} height={36} className="rounded-lg" />
           <span className="text-2xl font-black tracking-tight">
-            Apio <span className="text-xs font-mono tracking-widest text-orange-600 ml-1 align-middle">// ADMIN</span>
+            Apio <span className="text-xs font-mono tracking-widest ml-1 align-middle" style={{ color: '#00b395' }}>// ADMIN</span>
           </span>
         </Link>
 
@@ -90,7 +90,7 @@ export default function AdminLayout({ children }) {
           <span className="text-sm text-gray-700 font-medium hidden md:inline">
             {profile.full_name || profile.email}
           </span>
-          <span className={`px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase border-2 border-gray-900 ${profile.role === 'admin' ? 'bg-orange-500 text-white' : 'bg-yellow-400 text-gray-900'}`}>
+          <span className="px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase border-2 border-gray-900 text-white" style={{ background: profile.role === 'admin' ? '#00b395' : '#eab308' }}>
             {profile.role}
           </span>
           <Link
@@ -104,8 +104,7 @@ export default function AdminLayout({ children }) {
 
       {/* Body: sidebar + content */}
       <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-[240px_1fr] gap-5">
-        {/* Sidebar */}
-        <aside className="bg-amber-100 border-[3px] border-gray-900 rounded-2xl p-4 shadow-[6px_6px_0_#1a1d29] h-fit md:sticky md:top-24">
+        <aside className="bg-white border-[3px] border-gray-900 rounded-2xl p-4 shadow-[6px_6px_0_#1a1d29] h-fit md:sticky md:top-24">
           <p className="text-xs font-mono tracking-widest text-gray-600 uppercase px-2 mb-2">Sections</p>
           <nav className="flex flex-col gap-1">
             {navItems.map((item) => {
@@ -116,8 +115,8 @@ export default function AdminLayout({ children }) {
                   href={item.href}
                   className={`px-3 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition-colors ${
                     isActive
-                      ? 'bg-gray-900 text-amber-50'
-                      : 'hover:bg-amber-200'
+                      ? 'bg-gray-900 text-white'
+                      : 'hover:bg-gray-100'
                   }`}
                 >
                   <span>{item.icon}</span>
@@ -128,8 +127,7 @@ export default function AdminLayout({ children }) {
           </nav>
         </aside>
 
-        {/* Page content */}
-        <main className="bg-amber-100 border-[3px] border-gray-900 rounded-2xl p-7 shadow-[6px_6px_0_#1a1d29] min-h-[600px]">
+        <main className="bg-white border-[3px] border-gray-900 rounded-2xl p-7 shadow-[6px_6px_0_#1a1d29] min-h-[600px]">
           {children}
         </main>
       </div>
