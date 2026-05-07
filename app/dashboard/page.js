@@ -169,7 +169,7 @@ export default function DashboardPage() {
               +
             </div>
             <p className="font-bold text-gray-700">More AP courses</p>
-            <p className="text-xs text-gray-500 mt-1">Bio · Lang · CSP coming soon</p>
+            <p className="text-xs text-gray-500 mt-1">Calculus BC, U.S. Government, Human Geography, Business, and Cybersecurity coming soon</p>
           </div>
         </div>
 
