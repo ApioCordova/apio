@@ -216,7 +216,7 @@ if (isCompleted) {
                   return (
                     <div
                       key={lesson.id}
-                      className="flex justify-center mb-12 relative"
+                      className={`flex justify-center mb-12 relative ${popupLessonId === lesson.id ? 'z-40' : ''}`}
                       style={{ transform: `translateX(${offset}px)` }}
                     >
                       <div className="relative">
@@ -237,7 +237,7 @@ if (isCompleted) {
                         </p>
 
                         {popupLessonId === lesson.id && !isLocked && (
-                          <div className="absolute top-0 left-[110%] z-30 w-64 bg-gray-900 text-white p-4 rounded-xl shadow-[4px_4px_0_#1a1d29]">
+                          <div className="absolute top-0 left-[110%] z-50 w-64 bg-gray-900 text-white p-4 rounded-xl shadow-[4px_4px_0_#1a1d29]">
                             <h4 className="font-black text-base mb-1">{lesson.title}</h4>
                             <p className="text-xs text-gray-300 mb-3">{lesson.description}</p>
                             <div className="flex flex-col gap-2">
