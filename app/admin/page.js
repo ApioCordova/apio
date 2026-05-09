@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import RichEditor from './RichEditor'
 
 export default function AdminContentPage() {
   const [courses, setCourses] = useState([])
@@ -777,29 +778,14 @@ function ReadingCardInner({ index, reading, isFirst, isLast, onSave, onDelete, o
         <Field label="Reading title"><input value={draft.title || ''} onChange={(e) => setDraft({ ...draft, title: e.target.value })} className="w-full p-2 border-2 border-gray-900 rounded-lg bg-white" /></Field>
 
         <div className="mt-3">
-          <p className="block text-xs font-mono tracking-widest uppercase text-gray-700 font-bold mb-1">Content (HTML)</p>
-          <p className="text-xs text-gray-500 mb-2">
-            💡 You can use HTML here. Examples:<br />
-            <code className="bg-gray-100 px-1">&lt;p&gt;Paragraph&lt;/p&gt;</code> ·
-            <code className="bg-gray-100 px-1 ml-1">&lt;strong&gt;bold&lt;/strong&gt;</code> ·
-            <code className="bg-gray-100 px-1 ml-1">&lt;em&gt;italic&lt;/em&gt;</code> ·
-            <code className="bg-gray-100 px-1 ml-1">&lt;h2&gt;Heading&lt;/h2&gt;</code><br />
-            For images: <code className="bg-gray-100 px-1">&lt;img src="https://..." /&gt;</code><br />
-            For YouTube: <code className="bg-gray-100 px-1">&lt;iframe src="https://www.youtube.com/embed/VIDEO_ID" width="560" height="315"&gt;&lt;/iframe&gt;</code>
-          </p>
-          <textarea
+          <p className="block text-xs font-mono tracking-widest uppercase text-gray-700 font-bold mb-2">Content</p>
+          <RichEditor
             value={draft.content || ''}
-            onChange={(e) => setDraft({ ...draft, content: e.target.value })}
-            rows={12}
-            className="w-full p-3 border-2 border-gray-900 rounded-lg font-mono text-sm"
-            style={{ background: '#f6fbf8' }}
-            placeholder="<p>Your content here...</p>"
+            onChange={(html) => setDraft({ ...draft, content: html })}
           />
-        </div>
-
-        <div className="mt-3">
-          <p className="text-xs font-mono uppercase tracking-widest text-gray-600 mb-2 font-bold">Preview</p>
-          <div className="prose prose-sm max-w-none p-4 border-2 border-dashed border-gray-300 rounded-lg bg-white" dangerouslySetInnerHTML={{ __html: draft.content || '<p class="text-gray-400">Preview will appear here...</p>' }} />
+          <p className="text-xs text-gray-500 mt-2">
+            💡 For images, paste a URL to a hosted image (e.g., from Wikipedia, Imgur, or your own image host). For videos, paste a regular YouTube URL.
+          </p>
         </div>
       </div>
     )
