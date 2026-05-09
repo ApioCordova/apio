@@ -11,6 +11,8 @@ export default function AdminContentPage() {
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [contentView, setContentView] = useState('lesson') // 'lesson' | 'practice' | 'all'
+  
 
   useEffect(() => { loadCourses() }, [])
   useEffect(() => {
@@ -250,8 +252,23 @@ export default function AdminContentPage() {
     .flatMap((u) => u.lessons.map((l) => ({ ...l, unit: u })))
     .find((l) => l.id === selectedLessonId)
 
-  const filteredItems = statusFilter === 'all' ? items : items.filter((i) => i.status === statusFilter)
-  const questionCount = items.filter(i => i._kind === 'question').length
+  // First filter by content view (lesson sequence vs practice pool vs all)
+  let viewFilteredItems = items
+  if (contentView === 'lesson') {
+    // Lesson sequence: readings + lesson-pool questions
+    viewFilteredItems = items.filter(i => i._kind === 'reading' || (i._kind === 'question' && i.pool === 'lesson'))
+  } else if (contentView === 'practice') {
+    // Practice pool: practice-pool questions only
+    viewFilteredItems = items.filter(i => i._kind === 'question' && i.pool === 'practice')
+  }
+
+  // Then filter by status
+  const filteredItems = statusFilter === 'all'
+    ? viewFilteredItems
+    : viewFilteredItems.filter((i) => i.status === statusFilter)
+
+  const lessonQuestionCount = items.filter(i => i._kind === 'question' && i.pool === 'lesson').length
+  const practiceQuestionCount = items.filter(i => i._kind === 'question' && i.pool === 'practice').length
   const readingCount = items.filter(i => i._kind === 'reading').length
 
   return (
@@ -379,39 +396,125 @@ export default function AdminContentPage() {
 
             <LessonMetaEditor lesson={selectedLesson} onUpdate={updateLessonField} />
 
-            <div className="flex justify-between items-center mt-7 mb-3 flex-wrap gap-3">
-              <h2 className="text-xl font-black tracking-tight">
-                Lesson content
-                <span className="text-sm font-mono text-gray-500 ml-2">
-                  ({readingCount} reading{readingCount === 1 ? '' : 's'} · {questionCount} question{questionCount === 1 ? '' : 's'})
-                </span>
-              </h2>
-              <div className="flex gap-2 items-center flex-wrap">
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2 py-1 border-2 border-gray-900 rounded-lg text-xs font-bold bg-white">
-                  <option value="all">All</option>
-                  <option value="draft">Drafts only</option>
-                  <option value="published">Published only</option>
-                </select>
-                <button onClick={addReading} className="px-4 py-2 bg-white border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all">
-                  + Add reading
+            <div className="mt-7 mb-4">
+              {/* Tab switcher */}
+              <div className="flex gap-1 mb-4 border-b-2 border-gray-300">
+                <button
+                  onClick={() => setContentView('lesson')}
+                  className={`px-4 py-2 font-bold text-sm border-2 border-b-0 rounded-t-lg transition-all ${
+                    contentView === 'lesson'
+                      ? 'border-gray-900 text-white -mb-0.5'
+                      : 'border-transparent text-gray-500 hover:text-gray-900'
+                  }`}
+                  style={contentView === 'lesson' ? { background: '#00b395' } : {}}
+                >
+                  📘 Lesson sequence
+                  <span className={`ml-2 text-xs font-mono ${contentView === 'lesson' ? 'opacity-90' : 'text-gray-400'}`}>
+                    ({readingCount + lessonQuestionCount})
+                  </span>
                 </button>
-                <button onClick={() => addQuestion('lesson')} className="px-4 py-2 text-white border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all" style={{ background: '#00b395' }}>
-                  + Lesson question
+                <button
+                  onClick={() => setContentView('practice')}
+                  className={`px-4 py-2 font-bold text-sm border-2 border-b-0 rounded-t-lg transition-all ${
+                    contentView === 'practice'
+                      ? 'border-gray-900 -mb-0.5'
+                      : 'border-transparent text-gray-500 hover:text-gray-900'
+                  }`}
+                  style={contentView === 'practice' ? { background: '#fbbf24' } : {}}
+                >
+                  🎯 Practice pool
+                  <span className={`ml-2 text-xs font-mono ${contentView === 'practice' ? 'opacity-80' : 'text-gray-400'}`}>
+                    ({practiceQuestionCount})
+                  </span>
                 </button>
-                <button onClick={() => addQuestion('practice')} className="px-4 py-2 border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all" style={{ background: '#fbbf24' }}>
-                  + Practice question
+                <button
+                  onClick={() => setContentView('all')}
+                  className={`px-4 py-2 font-bold text-sm border-2 border-b-0 rounded-t-lg transition-all ${
+                    contentView === 'all'
+                      ? 'bg-gray-900 text-white border-gray-900 -mb-0.5'
+                      : 'border-transparent text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  📋 All content
                 </button>
               </div>
-            </div>
 
-            <p className="text-xs text-gray-500 mb-3">
-              💡 Items appear in this order in the lesson. Use the ↑↓ buttons to reorder.
-            </p>
+              {/* Section header + actions */}
+              <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
+                <div>
+                  {contentView === 'lesson' && (
+                    <>
+                      <h2 className="text-xl font-black tracking-tight">Lesson sequence</h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        💡 What students see in "Start lesson". Readings and questions in order. {readingCount} reading{readingCount === 1 ? '' : 's'} · {lessonQuestionCount} question{lessonQuestionCount === 1 ? '' : 's'}.
+                      </p>
+                    </>
+                  )}
+                  {contentView === 'practice' && (
+                    <>
+                      <h2 className="text-xl font-black tracking-tight">Practice pool</h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        💡 What students drill in "Practice problems". Random order, spaced repetition. {practiceQuestionCount} question{practiceQuestionCount === 1 ? '' : 's'}.
+                      </p>
+                    </>
+                  )}
+                  {contentView === 'all' && (
+                    <>
+                      <h2 className="text-xl font-black tracking-tight">All content</h2>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Everything in this lesson. {readingCount} reading{readingCount === 1 ? '' : 's'} · {lessonQuestionCount} lesson Q · {practiceQuestionCount} practice Q.
+                      </p>
+                    </>
+                  )}
+                </div>
+                <div className="flex gap-2 items-center flex-wrap">
+                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2 py-1 border-2 border-gray-900 rounded-lg text-xs font-bold bg-white">
+                    <option value="all">All statuses</option>
+                    <option value="draft">Drafts only</option>
+                    <option value="published">Published only</option>
+                  </select>
+
+                  {/* Show only relevant Add buttons per view */}
+                  {(contentView === 'lesson' || contentView === 'all') && (
+                    <>
+                      <button onClick={addReading} className="px-4 py-2 bg-white border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all">
+                        + Add reading
+                      </button>
+                      <button onClick={() => addQuestion('lesson')} className="px-4 py-2 text-white border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all" style={{ background: '#00b395' }}>
+                        + Lesson question
+                      </button>
+                    </>
+                  )}
+                  {(contentView === 'practice' || contentView === 'all') && (
+                    <button onClick={() => addQuestion('practice')} className="px-4 py-2 border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all" style={{ background: '#fbbf24' }}>
+                      + Practice question
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {contentView === 'lesson' && (
+                <p className="text-xs text-gray-500 mb-3">
+                  💡 Use the ↑↓ buttons to reorder items in the lesson sequence.
+                </p>
+              )}
+              {contentView === 'practice' && (
+                <p className="text-xs text-gray-500 mb-3">
+                  💡 Practice questions appear in random order to students — no need to reorder them here.
+                </p>
+              )}
+            </div>
 
             {filteredItems.length === 0 ? (
               <div className="text-center p-10 border-2 border-dashed border-gray-400 rounded-xl">
                 <p className="text-gray-700 mb-3">
-                  {statusFilter === 'all' ? 'No content yet. Add a reading or a question!' : `No ${statusFilter} items.`}
+                  {statusFilter !== 'all'
+                    ? `No ${statusFilter} ${contentView === 'practice' ? 'practice questions' : 'items'}.`
+                    : contentView === 'lesson'
+                    ? 'No lesson content yet. Add a reading or a lesson question!'
+                    : contentView === 'practice'
+                    ? 'No practice questions yet. Click "+ Practice question" to add some.'
+                    : 'No content yet.'}
                 </p>
               </div>
             ) : (

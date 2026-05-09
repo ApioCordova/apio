@@ -177,11 +177,11 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-12 p-4 bg-white border-2 border-dashed border-gray-300 rounded-xl text-xs font-mono text-gray-500">
-          <span style={{ color: '#00b395' }}>// connected to supabase</span>
+          <span style={{ color: '#00b395' }}>Howdy!</span>
           <br />
           logged in as <strong>{user?.email}</strong> · role: <strong>{profile?.role || 'student'}</strong> · {courses.length} courses loaded
         </div>
-        <p className="text-xs text-gray-400 font-mono mt-4">v1.00</p>
+        <p className="text-xs text-gray-400 font-mono mt-4">v1.11</p>
       </div>
     </div>
   )
