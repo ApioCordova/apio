@@ -161,7 +161,7 @@ export default function AdminContentPage() {
   }
 
   // ============ ITEMS (Questions + Readings) ============
-  async function addQuestion() {
+  async function addQuestion(pool = 'lesson') {
     if (!selectedLessonId) return
     const sortOrder = items.length + 1
     const { error } = await supabase.from('questions').insert({
@@ -169,10 +169,10 @@ export default function AdminContentPage() {
       stem: 'Enter your question here.',
       choices: ['Option A', 'Option B', 'Option C', 'Option D'],
       answer: 0, explanation: 'Why this answer is correct.',
-      sort_order: sortOrder, status: 'draft',
+      sort_order: sortOrder, status: 'draft', pool: pool,
     })
     if (error) { showToast('Failed: ' + error.message); return }
-    showToast('Draft question added')
+    showToast(`Draft ${pool} question added`)
     await loadItems(selectedLessonId)
   }
 
@@ -200,7 +200,13 @@ export default function AdminContentPage() {
     await loadItems(selectedLessonId)
     return true
   }
-
+  // THIS IS C STUFF
+  async function toggleQuestionPool(questionId, currentPool) {
+    const newPool = currentPool === 'lesson' ? 'practice' : 'lesson'
+    await supabase.from('questions').update({ pool: newPool }).eq('id', questionId)
+    showToast(`Moved to ${newPool} pool`)
+    await loadItems(selectedLessonId)
+  }
   async function updateReading(readingId, draft) {
     const { error } = await supabase.from('readings').update({
       title: draft.title, content: draft.content,
@@ -389,8 +395,11 @@ export default function AdminContentPage() {
                 <button onClick={addReading} className="px-4 py-2 bg-white border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all">
                   + Add reading
                 </button>
-                <button onClick={addQuestion} className="px-4 py-2 text-white border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all" style={{ background: '#00b395' }}>
-                  + Add question
+                <button onClick={() => addQuestion('lesson')} className="px-4 py-2 text-white border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all" style={{ background: '#00b395' }}>
+                  + Lesson question
+                </button>
+                <button onClick={() => addQuestion('practice')} className="px-4 py-2 border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all" style={{ background: '#fbbf24' }}>
+                  + Practice question
                 </button>
               </div>
             </div>
@@ -420,6 +429,7 @@ export default function AdminContentPage() {
                     onStatusChange={(s) => setStatus(item._kind === 'question' ? 'questions' : 'readings', item.id, s)}
                     onMoveUp={() => moveItem(item, 'up')}
                     onMoveDown={() => moveItem(item, 'down')}
+                    onTogglePool={() => toggleQuestionPool(item.id, item.pool)}
                   />
                 ))}
               </div>
@@ -527,7 +537,7 @@ function LessonMetaEditor({ lesson, onUpdate }) {
 }
 
 // ============ ITEM CARD (handles both questions and readings) ============
-function ItemCard({ index, item, isFirst, isLast, onSaveQuestion, onSaveReading, onDelete, onStatusChange, onMoveUp, onMoveDown }) {
+function ItemCard({ index, item, isFirst, isLast, onSaveQuestion, onSaveReading, onDelete, onStatusChange, onMoveUp, onMoveDown, onTogglePool }) {
   if (item._kind === 'question') {
     return (
       <QuestionCardInner
@@ -536,6 +546,7 @@ function ItemCard({ index, item, isFirst, isLast, onSaveQuestion, onSaveReading,
         onSave={onSaveQuestion} onDelete={onDelete}
         onStatusChange={onStatusChange}
         onMoveUp={onMoveUp} onMoveDown={onMoveDown}
+        onTogglePool={onTogglePool}
       />
     )
   }
@@ -560,7 +571,7 @@ function ReorderControls({ isFirst, isLast, onMoveUp, onMoveDown }) {
 }
 
 // ============ QUESTION CARD ============
-function QuestionCardInner({ index, question, isFirst, isLast, onSave, onDelete, onStatusChange, onMoveUp, onMoveDown }) {
+function QuestionCardInner({ index, question, isFirst, isLast, onSave, onDelete, onStatusChange, onMoveUp, onMoveDown, onTogglePool }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(question)
 
@@ -603,8 +614,23 @@ function QuestionCardInner({ index, question, isFirst, isLast, onSave, onDelete,
           <p className="text-xs font-mono tracking-widest uppercase font-bold flex items-center gap-2" style={{ color: '#00b395' }}>
             📝 Question — item {index + 1}
             <StatusDot status={question.status} />
+            <span
+              className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900 ${
+                question.pool === 'practice' ? 'text-gray-900' : 'text-white'
+              }`}
+              style={{ background: question.pool === 'practice' ? '#fbbf24' : '#00b395' }}
+            >
+              {question.pool === 'practice' ? 'PRACTICE' : 'LESSON'}
+            </span>
           </p>
           <div className="flex gap-1.5 flex-wrap items-center">
+            <button
+              onClick={onTogglePool}
+              className="px-3 py-1 bg-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]"
+              title={`Move to ${question.pool === 'practice' ? 'lesson' : 'practice'} pool`}
+            >
+              ↔ {question.pool === 'practice' ? 'To lesson' : 'To practice'}
+            </button>
             <StatusControls status={question.status} onChange={onStatusChange} />
             <button onClick={startEdit} className="px-3 py-1 bg-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">Edit</button>
             <button onClick={onDelete} className="px-3 py-1 bg-red-500 text-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">Delete</button>

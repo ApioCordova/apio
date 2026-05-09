@@ -202,16 +202,16 @@ if (courseData && !isAdminUser) {
                   const offset = offsets[idx % 5]
 
                   let nodeBg = 'bg-white text-gray-900'
-                  let nodeStyle = {}
-                  if (isCompleted) {
-                    nodeBg = 'text-white'
-                    nodeStyle = { background: '#00b395' }
-                  } else if (isCurrent) {
-                    nodeBg = 'text-white animate-pulse'
-                    nodeStyle = { background: '#00b395' }
-                  } else if (isLocked) {
-                    nodeBg = 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }
+let nodeStyle = {}
+if (isCompleted) {
+  nodeBg = 'text-gray-900'
+  nodeStyle = { background: '#fbbf24' } // golden yellow
+} else if (isCurrent) {
+  nodeBg = 'text-white animate-pulse'
+  nodeStyle = { background: '#00b395' }
+} else if (isLocked) {
+  nodeBg = 'bg-gray-300 text-gray-500 cursor-not-allowed'
+}
 
                   return (
                     <div
