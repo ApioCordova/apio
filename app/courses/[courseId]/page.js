@@ -237,16 +237,24 @@ if (courseData && !isAdminUser) {
                         </p>
 
                         {popupLessonId === lesson.id && !isLocked && (
-                          <div className="absolute top-0 left-[110%] z-30 w-60 bg-gray-900 text-white p-4 rounded-xl shadow-[4px_4px_0_#1a1d29]">
+                          <div className="absolute top-0 left-[110%] z-30 w-64 bg-gray-900 text-white p-4 rounded-xl shadow-[4px_4px_0_#1a1d29]">
                             <h4 className="font-black text-base mb-1">{lesson.title}</h4>
                             <p className="text-xs text-gray-300 mb-3">{lesson.description}</p>
-                            <Link
-                              href={`/lessons/${lesson.id}`}
-                              className="block text-center w-full px-3 py-2 text-white rounded-full font-bold text-sm border-2 border-white hover:opacity-80 transition-colors"
-                              style={{ background: '#00b395' }}
-                            >
-                              {isCompleted ? 'Practice again' : 'Start lesson'} →
-                            </Link>
+                            <div className="flex flex-col gap-2">
+                              <Link
+                                href={`/lessons/${lesson.id}`}
+                                className="block text-center w-full px-3 py-2 text-white rounded-full font-bold text-sm border-2 border-white hover:opacity-80 transition-colors"
+                                style={{ background: '#00b395' }}
+                              >
+                                {isCompleted ? 'Review lesson' : 'Start lesson'} →
+                              </Link>
+                              <Link
+                                href={`/lessons/${lesson.id}?mode=practice`}
+                                className="block text-center w-full px-3 py-2 bg-transparent text-white rounded-full font-bold text-sm border-2 border-white hover:bg-white hover:text-gray-900 transition-colors"
+                              >
+                                Practice problems
+                              </Link>
+                            </div>
                           </div>
                         )}
                       </div>
