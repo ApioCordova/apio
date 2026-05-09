@@ -60,12 +60,27 @@ export default function LessonPage() {
       setLesson(lessonData)
       setCourse(lessonData.unit?.course)
 
-      const { data: qData } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('lesson_id', lessonId)
-        .order('sort_order')
-      setQuestions(qData || [])
+      // Check if user is admin
+const { data: profileCheck } = await supabase
+  .from('profiles')
+  .select('role')
+  .eq('id', user.id)
+  .single()
+const isAdminUser = profileCheck?.role === 'admin' || profileCheck?.role === 'editor'
+
+let qQuery = supabase
+  .from('questions')
+  .select('*')
+  .eq('lesson_id', lessonId)
+  .order('sort_order')
+
+// Students only see published questions
+if (!isAdminUser) {
+  qQuery = qQuery.eq('status', 'published')
+}
+
+const { data: qData } = await qQuery
+setQuestions(qData || [])
 
       setLoading(false)
     }

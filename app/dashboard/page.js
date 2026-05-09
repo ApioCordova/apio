@@ -30,16 +30,19 @@ export default function DashboardPage() {
       setProfile(profileData)
 
       const { data: coursesData } = await supabase
-        .from('courses')
-        .select(`
-          *,
-          units (
-            id,
-            lessons (id)
-          )
-        `)
-        .eq('is_published', true)
-        .order('sort_order')
+  .from('courses')
+  .select(`
+    *,
+    units!inner (
+      id,
+      status,
+      lessons!inner (id, status)
+    )
+  `)
+  .eq('status', 'published')
+  .eq('units.status', 'published')
+  .eq('units.lessons.status', 'published')
+  .order('sort_order')
       setCourses(coursesData || [])
 
       setLoading(false)

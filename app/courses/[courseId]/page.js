@@ -35,17 +35,30 @@ export default function CoursePage() {
         .single()
       setProfile(profileData)
 
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses')
-        .select(`
-          *,
-          units (
-            *,
-            lessons (*)
-          )
-        `)
-        .eq('id', courseId)
-        .single()
+      // First check if user is admin (admins see all content including drafts)
+const { data: profileCheck } = await supabase
+  .from('profiles')
+  .select('role')
+  .eq('id', user.id)
+  .single()
+const isAdminUser = profileCheck?.role === 'admin' || profileCheck?.role === 'editor'
+
+let courseQuery = supabase
+  .from('courses')
+  .select(`*, units (*, lessons (*))`)
+  .eq('id', courseId)
+  .single()
+
+const { data: courseData, error: courseError } = await courseQuery
+
+// If not admin, filter out non-published units and lessons client-side
+// (RLS already hides drafts from students at the DB level, but this is belt-and-suspenders)
+if (courseData && !isAdminUser) {
+  courseData.units = (courseData.units || []).filter(u => u.status === 'published')
+  courseData.units.forEach(u => {
+    u.lessons = (u.lessons || []).filter(l => l.status === 'published')
+  })
+}
 
       if (courseError || !courseData) {
         setLoading(false)
