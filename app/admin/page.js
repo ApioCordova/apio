@@ -503,28 +503,39 @@ function StatusDot({ status, small }) {
 
 // ============ STATUS CONTROLS ============
 function StatusControls({ status, onChange }) {
+  // Pill colors based on current status
+  const pillStyle =
+    status === 'published'
+      ? { background: '#00b395', color: 'white' }
+      : status === 'archived'
+      ? { background: '#374151', color: 'white' } // dark gray
+      : { background: '#fde047', color: '#1a1d29' } // yellow for draft
+
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className={`px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-widest border-2 border-gray-900 ${
-        status === 'published' ? 'text-white' : status === 'archived' ? 'bg-gray-300 text-gray-700' : 'bg-yellow-300 text-gray-900'
-      }`}
-      style={status === 'published' ? { background: '#00b395' } : {}}
+      {/* Current status pill */}
+      <span
+        className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest border-2 border-gray-900 shadow-[2px_2px_0_#1a1d29]"
+        style={pillStyle}
       >
-        {status}
+        Current status: {status}
       </span>
+
+      {/* Action buttons — show only the ones that change to a different state */}
       {status !== 'published' && (
         <button
           onClick={() => onChange('published')}
-          className="px-3 py-1 text-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]"
+          className="px-3 py-1 text-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
           style={{ background: '#00b395' }}
         >
           Publish
         </button>
       )}
-      {status === 'published' && (
+      {status !== 'draft' && (
         <button
           onClick={() => onChange('draft')}
-          className="px-3 py-1 bg-yellow-300 border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]"
+          className="px-3 py-1 border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
+          style={{ background: '#fde047', color: '#1a1d29' }}
         >
           Move to draft
         </button>
@@ -532,7 +543,8 @@ function StatusControls({ status, onChange }) {
       {status !== 'archived' && (
         <button
           onClick={() => onChange('archived')}
-          className="px-3 py-1 bg-gray-300 border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]"
+          className="px-3 py-1 text-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
+          style={{ background: '#374151' }}
         >
           Archive
         </button>
