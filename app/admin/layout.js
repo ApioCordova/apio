@@ -72,6 +72,7 @@ export default function AdminLayout({ children }) {
 
   const navItems = [
     { href: '/admin', label: 'Content', icon: '📚' },
+    { href: '/admin/review', label: 'Pending Review', icon: '📋' },
     { href: '/admin/contributors', label: 'Contributors', icon: '👥' },
     { href: '/admin/analytics', label: 'Analytics', icon: '📊' },
   ]
