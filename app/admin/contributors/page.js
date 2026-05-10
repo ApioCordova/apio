@@ -162,9 +162,9 @@ export default function ContributorsPage() {
                   <div className="flex-1 min-w-48">
                     <p className="font-bold text-sm">{req.target_email}</p>
                     <p className="text-xs text-gray-600">
-                      <span className="font-mono">{req.current_role.replace('_', ' ')}</span> →{' '}
+                      <span className="font-mono">{(req.from_role || 'unknown').replace('_', ' ')}</span> →{' '}
                       <span className="font-mono font-bold" style={{ color: ROLE_INFO[req.requested_role]?.color }}>
-                        {(req.requested_role || '').replace('_', ' ')}
+                        {(req.requested_role || 'unknown').replace('_', ' ')}
                       </span>
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">Requested by: {requester?.email || 'unknown'}</p>
@@ -328,7 +328,7 @@ export default function ContributorsPage() {
                   <tr key={req.id} className="border-b border-gray-200">
                     <td className="p-2 text-gray-600">{new Date(req.created_at).toLocaleDateString()}</td>
                     <td className="p-2 font-mono">{req.target_email}</td>
-                    <td className="p-2">{req.from_role} → {req.requested_role}</td>
+                    <td className="p-2">{req.from_role || '?'} → {req.requested_role || '?'}</td>
                     <td className="p-2">
                       <span className={`px-2 py-0.5 rounded text-xs font-bold ${req.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {req.status}
