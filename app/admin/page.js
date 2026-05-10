@@ -11,10 +11,14 @@ export default function AdminContentPage() {
   const [items, setItems] = useState([]) // unified: questions + readings, sorted
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
+  const [courses, setCourses] = useState([])
+  const [selectedCourseId, setSelectedCourseId] = useState(null)
+  const [selectedLessonId, setSelectedLessonId] = useState(null)
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [toast, setToast] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
-  const [contentView, setContentView] = useState('lesson') // 'lesson' | 'practice' | 'all'
-  const [currentUser, setCurrentUser] = useState(null)
-  const [currentRole, setCurrentRole] = useState(null)
+  const [contentView, setContentView] = useState('lesson')
   const [currentUser, setCurrentUser] = useState(null)
   const [currentRole, setCurrentRole] = useState(null)
 
