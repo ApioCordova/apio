@@ -76,24 +76,14 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex gap-2">
-            <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
-              🔥 {profile?.streak ?? 0}
-            </div>
-            <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
-              ⚡ {profile?.xp ?? 0}
-            </div>
-            <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
-              ♥ {profile?.hearts ?? 5}
-            </div>
-          </div>
+          
 
           {isAdmin && (
             <Link
               href="/admin"
               className="px-3 py-1.5 bg-gray-900 text-white rounded-full text-xs font-bold tracking-widest uppercase shadow-[2px_2px_0_#1a1d29] hover:opacity-80 transition-colors"
             >
-              Admin
+              Control Center
             </Link>
           )}
 

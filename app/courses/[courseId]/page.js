@@ -115,17 +115,7 @@ if (courseData && !isAdminUser) {
           <span className="text-2xl font-black tracking-tight">Apio</span>
         </Link>
 
-        <div className="flex gap-2">
-          <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
-            🔥 {profile?.streak ?? 0}
-          </div>
-          <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
-            ⚡ {profile?.xp ?? 0}
-          </div>
-          <div className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29]">
-            ♥ {profile?.hearts ?? 5}
-          </div>
-        </div>
+        
       </div>
 
       {/* Main */}

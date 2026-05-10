@@ -30,7 +30,6 @@ export default function LessonPage() {
   const [selected, setSelected] = useState(null)
   const [checked, setChecked] = useState(false)
   const [correctCount, setCorrectCount] = useState(0)
-  const [hearts, setHearts] = useState(5)
   const [completed, setCompleted] = useState(false)
 
   useEffect(() => {
@@ -42,7 +41,6 @@ export default function LessonPage() {
       const { data: profileData } = await supabase
         .from('profiles').select('*').eq('id', user.id).single()
       setProfile(profileData)
-      setHearts(profileData?.hearts ?? 5)
       const isAdminUser = profileData?.role === 'admin' || profileData?.role === 'editor'
 
       const { data: lessonData } = await supabase
@@ -156,7 +154,6 @@ export default function LessonPage() {
     setChecked(true)
     const wasCorrect = selected === item.answer
     if (wasCorrect) setCorrectCount((c) => c + 1)
-    else if (!isPracticeMode) setHearts((h) => Math.max(0, h - 1))
     // Log attempt for spaced repetition (both lesson + practice modes)
     await logAttempt(item.id, wasCorrect)
   }
@@ -178,11 +175,6 @@ export default function LessonPage() {
           { user_id: user.id, lesson_id: lessonId, score, completed_at: new Date().toISOString(), due_at: dueAt },
           { onConflict: 'user_id,lesson_id' }
         )
-        await supabase.from('profiles').update({
-          xp: (profile?.xp ?? 0) + xpEarned,
-          streak: (profile?.streak ?? 0) + 1,
-          hearts,
-        }).eq('id', user.id)
       }
       setCompleted(true)
     }
@@ -288,7 +280,6 @@ export default function LessonPage() {
   if (completed) {
     const questions = items.filter(i => i._kind === 'question')
     const accuracy = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 100
-    const xpEarned = correctCount * 10
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ background: '#f6fbf8' }}>
@@ -302,22 +293,10 @@ export default function LessonPage() {
         {isPracticeMode && <p className="text-xs text-gray-500 mb-6 font-mono uppercase tracking-widest">// practice mode — XP not earned, but mastery tracked</p>}
 
         <div className="flex gap-3 mb-7 flex-wrap justify-center">
-          {!isPracticeMode && (
-            <div className="bg-white border-[3px] border-gray-900 rounded-xl px-5 py-3 shadow-[3px_3px_0_#1a1d29]">
-              <p className="text-xs font-mono tracking-widest uppercase text-gray-600 mb-0.5">XP earned</p>
-              <p className="text-2xl font-black" style={{ color: '#00b395' }}>+{xpEarned}</p>
-            </div>
-          )}
           <div className="bg-white border-[3px] border-gray-900 rounded-xl px-5 py-3 shadow-[3px_3px_0_#1a1d29]">
             <p className="text-xs font-mono tracking-widest uppercase text-gray-600 mb-0.5">Accuracy</p>
             <p className="text-2xl font-black text-teal-600">{accuracy}%</p>
           </div>
-          {!isPracticeMode && (
-            <div className="bg-white border-[3px] border-gray-900 rounded-xl px-5 py-3 shadow-[3px_3px_0_#1a1d29]">
-              <p className="text-xs font-mono tracking-widest uppercase text-gray-600 mb-0.5">Streak</p>
-              <p className="text-2xl font-black" style={{ color: '#00b395' }}>🔥 +1</p>
-            </div>
-          )}
         </div>
 
         <div className="flex gap-2">
@@ -348,12 +327,8 @@ export default function LessonPage() {
         <div className="flex-1 h-3 bg-white border-2 border-gray-900 rounded-full overflow-hidden">
           <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: '#00b395' }} />
         </div>
-        {isPracticeMode ? (
+        {isPracticeMode && (
           <span className="text-xs font-mono uppercase tracking-widest font-bold" style={{ color: '#00b395' }}>practice</span>
-        ) : (
-          <div className="flex gap-1 items-center font-black text-pink-700 text-sm">
-            <span>♥</span><span>{hearts}</span>
-          </div>
         )}
       </div>
 
