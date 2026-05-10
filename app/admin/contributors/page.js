@@ -164,7 +164,7 @@ export default function ContributorsPage() {
                     <p className="text-xs text-gray-600">
                       <span className="font-mono">{req.current_role.replace('_', ' ')}</span> →{' '}
                       <span className="font-mono font-bold" style={{ color: ROLE_INFO[req.requested_role]?.color }}>
-                        {req.requested_role.replace('_', ' ')}
+                        {(req.requested_role || '').replace('_', ' ')}
                       </span>
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">Requested by: {requester?.email || 'unknown'}</p>
