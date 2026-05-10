@@ -11,14 +11,8 @@ export default function AdminContentPage() {
   const [items, setItems] = useState([]) // unified: questions + readings, sorted
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
-  const [courses, setCourses] = useState([])
-  const [selectedCourseId, setSelectedCourseId] = useState(null)
-  const [selectedLessonId, setSelectedLessonId] = useState(null)
-  const [items, setItems] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [toast, setToast] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
-  const [contentView, setContentView] = useState('lesson')
+  const [contentView, setContentView] = useState('lesson') // 'lesson' | 'practice' | 'all'
   const [currentUser, setCurrentUser] = useState(null)
   const [currentRole, setCurrentRole] = useState(null)
 
@@ -42,6 +36,7 @@ export default function AdminContentPage() {
     }
     init()
   }, [])
+
   useEffect(() => {
     if (selectedLessonId) loadItems(selectedLessonId)
     else setItems([])
@@ -107,9 +102,6 @@ export default function AdminContentPage() {
   }
 
   async function approveContent(table, id) {
-    if (isQuestionMaker || isReviewer && false) {
-      // reviewers cannot approve their own; we check this in the UI based on created_by
-    }
     await supabase.from(table).update({ status: 'published' }).eq('id', id)
     showToast('✓ Approved & published')
     if (table === 'questions' || table === 'readings') await loadItems(selectedLessonId)
@@ -263,13 +255,14 @@ export default function AdminContentPage() {
     await loadItems(selectedLessonId)
     return true
   }
-  // THIS IS C STUFF
+
   async function toggleQuestionPool(questionId, currentPool) {
     const newPool = currentPool === 'lesson' ? 'practice' : 'lesson'
     await supabase.from('questions').update({ pool: newPool }).eq('id', questionId)
     showToast(`Moved to ${newPool} pool`)
     await loadItems(selectedLessonId)
   }
+
   async function updateReading(readingId, draft) {
     const { error } = await supabase.from('readings').update({
       title: draft.title, content: draft.content,
@@ -412,7 +405,6 @@ export default function AdminContentPage() {
                   onDeny={() => denyContent('courses', selectedCourse.id)}
                   role={currentRole}
                   isOwnContent={false}
-                  contentTable="courses"
                 />
               )}
             </div>
@@ -553,6 +545,7 @@ export default function AdminContentPage() {
                   <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2 py-1 border-2 border-gray-900 rounded-lg text-xs font-bold bg-white">
                     <option value="all">All statuses</option>
                     <option value="draft">Drafts only</option>
+                    <option value="pending_review">Pending review</option>
                     <option value="published">Published only</option>
                   </select>
 
@@ -591,7 +584,7 @@ export default function AdminContentPage() {
               <div className="text-center p-10 border-2 border-dashed border-gray-400 rounded-xl">
                 <p className="text-gray-700 mb-3">
                   {statusFilter !== 'all'
-                    ? `No ${statusFilter} ${contentView === 'practice' ? 'practice questions' : 'items'}.`
+                    ? `No ${statusFilter.replace('_', ' ')} ${contentView === 'practice' ? 'practice questions' : 'items'}.`
                     : contentView === 'lesson'
                     ? 'No lesson content yet. Add a reading or a lesson question!'
                     : contentView === 'practice'
@@ -639,13 +632,17 @@ export default function AdminContentPage() {
 
 // ============ STATUS DOT ============
 function StatusDot({ status, small }) {
-  const color = status === 'published' ? '#00b395' : status === 'archived' ? '#374151' : '#fde047'
+  const color =
+    status === 'published' ? '#00b395' :
+    status === 'archived' ? '#374151' :
+    status === 'pending_review' ? '#3b82f6' :
+    '#fde047'
   const size = small ? 6 : 8
   return <span className="inline-block rounded-full flex-shrink-0" style={{ width: size, height: size, background: color }} title={status} />
 }
 
 // ============ STATUS CONTROLS ============
-function StatusControls({ status, onChange, onSendForApproval, onApprove, onDeny, role, isOwnContent, contentTable }) {
+function StatusControls({ status, onChange, onSendForApproval, onApprove, onDeny, role, isOwnContent }) {
   const activeStyles = {
     published: { background: '#00b395', color: 'white' },
     archived: { background: '#374151', color: 'white' },
@@ -749,6 +746,7 @@ function StatusControls({ status, onChange, onSendForApproval, onApprove, onDeny
     </div>
   )
 }
+
 // ============ COURSE EDITOR ============
 function CourseEditor({ course, onUpdate }) {
   const [draft, setDraft] = useState(course)
@@ -786,16 +784,17 @@ function UnitRow({ unit, onUpdate, onStatusChange, onDelete, role, onSendForAppr
         <span className="text-xs font-mono text-gray-500 px-2">{unit.lessons.length} lesson{unit.lessons.length === 1 ? '' : 's'}</span>
         <button onClick={onDelete} className="px-2 py-1 text-red-600 hover:bg-red-100 rounded text-sm" title="Delete unit">🗑</button>
       </div>
-      <div className="flex justify-end"><StatusControls
-                  status={selectedCourse.status}
-                  onChange={(s) => setStatus('courses', selectedCourse.id, s)}
-                  onSendForApproval={() => sendForApproval('courses', selectedCourse.id)}
-                  onApprove={() => approveContent('courses', selectedCourse.id)}
-                  onDeny={() => denyContent('courses', selectedCourse.id)}
-                  role={currentRole}
-                  isOwnContent={false}
-                  contentTable="courses"
-                /></div>
+      <div className="flex justify-end">
+        <StatusControls
+          status={unit.status}
+          onChange={onStatusChange}
+          onSendForApproval={onSendForApproval}
+          onApprove={onApprove}
+          onDeny={onDeny}
+          role={role}
+          isOwnContent={false}
+        />
+      </div>
     </div>
   )
 }
@@ -917,8 +916,8 @@ function QuestionCardInner({ index, question, isFirst, isLast, onSave, onDelete,
                 }
                 const newChoices = draft.choices.filter((_, idx) => idx !== i)
                 let newAnswer = draft.answer
-                if (draft.answer === i) newAnswer = 0 // reset to first choice if we deleted the answer
-                else if (draft.answer > i) newAnswer = draft.answer - 1 // shift down
+                if (draft.answer === i) newAnswer = 0
+                else if (draft.answer > i) newAnswer = draft.answer - 1
                 setDraft({ ...draft, choices: newChoices, answer: newAnswer })
               }}
               className="px-2 py-1 text-red-600 hover:bg-red-100 rounded text-sm border border-transparent hover:border-red-300"
@@ -972,7 +971,7 @@ function QuestionCardInner({ index, question, isFirst, isLast, onSave, onDelete,
             >
               ↔ {question.pool === 'practice' ? 'To lesson' : 'To practice'}
             </button>
-           <StatusControls
+            <StatusControls
               status={question.status}
               onChange={onStatusChange}
               onSendForApproval={onSendForApproval}
@@ -1045,8 +1044,8 @@ function ReadingCardInner({ index, reading, isFirst, isLast, onSave, onDelete, o
             📖 Reading — item {index + 1}
             <StatusDot status={reading.status} />
           </p>
-          <div className="flex justify-end">
-        <StatusControls
+          <div className="flex gap-1.5 flex-wrap items-center">
+            <StatusControls
               status={reading.status}
               onChange={onStatusChange}
               onSendForApproval={onSendForApproval}
@@ -1055,7 +1054,9 @@ function ReadingCardInner({ index, reading, isFirst, isLast, onSave, onDelete, o
               role={role}
               isOwnContent={reading.created_by === currentUserId}
             />
-      </div>
+            <button onClick={startEdit} className="px-3 py-1 bg-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">Edit</button>
+            <button onClick={onDelete} className="px-3 py-1 bg-red-500 text-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">Delete</button>
+          </div>
         </div>
         <h4 className="font-black text-base mb-2">{reading.title}</h4>
         <div className="text-xs text-gray-700 max-h-24 overflow-hidden relative">
