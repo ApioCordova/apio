@@ -76,7 +76,7 @@ export default function ContributorsPage() {
       requested_by: currentUser.id,
       target_user_id: targetProfile.id,
       target_email: targetProfile.email,
-      current_role: targetProfile.role,
+      from_role: targetProfile.role,
       requested_role: requestedRole,
       status: 'pending',
     })
@@ -328,7 +328,7 @@ export default function ContributorsPage() {
                   <tr key={req.id} className="border-b border-gray-200">
                     <td className="p-2 text-gray-600">{new Date(req.created_at).toLocaleDateString()}</td>
                     <td className="p-2 font-mono">{req.target_email}</td>
-                    <td className="p-2">{req.current_role} → {req.requested_role}</td>
+                    <td className="p-2">{req.from_role} → {req.requested_role}</td>
                     <td className="p-2">
                       <span className={`px-2 py-0.5 rounded text-xs font-bold ${req.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                         {req.status}
