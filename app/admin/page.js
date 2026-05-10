@@ -13,9 +13,31 @@ export default function AdminContentPage() {
   const [toast, setToast] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
   const [contentView, setContentView] = useState('lesson') // 'lesson' | 'practice' | 'all'
-  
+  const [currentUser, setCurrentUser] = useState(null)
+  const [currentRole, setCurrentRole] = useState(null)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [currentRole, setCurrentRole] = useState(null)
 
-  useEffect(() => { loadCourses() }, [])
+  const canPublishDirectly = currentRole === 'admin' || currentRole === 'editor'
+  const isReviewer = currentRole === 'reviewer'
+  const isQuestionMaker = currentRole === 'question_maker'
+
+  useEffect(() => {
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setCurrentUser(user)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role, email')
+          .eq('id', user.id)
+          .single()
+        setCurrentRole(profile?.role)
+      }
+      await loadCourses()
+    }
+    init()
+  }, [])
   useEffect(() => {
     if (selectedLessonId) loadItems(selectedLessonId)
     else setItems([])
@@ -60,8 +82,40 @@ export default function AdminContentPage() {
 
   // ============ STATUS UPDATES ============
   async function setStatus(table, id, status) {
+    // Enforce role-based publishing rules
+    if (status === 'published') {
+      if (isQuestionMaker || isReviewer) {
+        showToast('You do not have permission to publish directly. Use "Send for approval" instead.')
+        return
+      }
+    }
     await supabase.from(table).update({ status }).eq('id', id)
-    showToast(status === 'published' ? '✓ Published' : 'Set to ' + status)
+    showToast(status === 'published' ? '✓ Published' : 'Set to ' + status.replace('_', ' '))
+    if (table === 'questions' || table === 'readings') await loadItems(selectedLessonId)
+    else await loadCourses()
+  }
+
+  async function sendForApproval(table, id) {
+    await supabase.from(table).update({ status: 'pending_review' }).eq('id', id)
+    showToast('📤 Sent for approval')
+    if (table === 'questions' || table === 'readings') await loadItems(selectedLessonId)
+    else await loadCourses()
+  }
+
+  async function approveContent(table, id) {
+    if (isQuestionMaker || isReviewer && false) {
+      // reviewers cannot approve their own; we check this in the UI based on created_by
+    }
+    await supabase.from(table).update({ status: 'published' }).eq('id', id)
+    showToast('✓ Approved & published')
+    if (table === 'questions' || table === 'readings') await loadItems(selectedLessonId)
+    else await loadCourses()
+  }
+
+  async function denyContent(table, id) {
+    if (!confirm('Deny this content and send back to draft?')) return
+    await supabase.from(table).update({ status: 'draft' }).eq('id', id)
+    showToast('Sent back to draft')
     if (table === 'questions' || table === 'readings') await loadItems(selectedLessonId)
     else await loadCourses()
   }
@@ -173,6 +227,7 @@ export default function AdminContentPage() {
       choices: ['Option A', 'Option B', 'Option C', 'Option D'],
       answer: 0, explanation: 'Why this answer is correct.',
       sort_order: sortOrder, status: 'draft', pool: pool,
+      created_by: currentUser?.id,
     })
     if (error) { showToast('Failed: ' + error.message); return }
     showToast(`Draft ${pool} question added`)
@@ -185,8 +240,9 @@ export default function AdminContentPage() {
     const { error } = await supabase.from('readings').insert({
       lesson_id: selectedLessonId,
       title: 'New reading',
-      content: '<p>Enter your content here. Use the toolbar above to format text, add images, or embed videos.</p>',
+      content: '<p>Enter your content here.</p>',
       sort_order: sortOrder, status: 'draft',
+      created_by: currentUser?.id,
     })
     if (error) { showToast('Failed: ' + error.message); return }
     showToast('Draft reading added')
@@ -344,7 +400,16 @@ export default function AdminContentPage() {
                 {selectedCourse ? `Editing ${selectedCourse.title}` : 'Pick a lesson to edit.'}
               </h1>
               {selectedCourse && (
-                <StatusControls status={selectedCourse.status} onChange={(s) => setStatus('courses', selectedCourse.id, s)} />
+                <StatusControls
+                  status={selectedCourse.status}
+                  onChange={(s) => setStatus('courses', selectedCourse.id, s)}
+                  onSendForApproval={() => sendForApproval('courses', selectedCourse.id)}
+                  onApprove={() => approveContent('courses', selectedCourse.id)}
+                  onDeny={() => denyContent('courses', selectedCourse.id)}
+                  role={currentRole}
+                  isOwnContent={false}
+                  contentTable="courses"
+                />
               )}
             </div>
             <p className="text-gray-700 max-w-xl mb-6">
@@ -371,7 +436,11 @@ export default function AdminContentPage() {
                         key={unit.id} unit={unit}
                         onUpdate={updateUnitField}
                         onStatusChange={(s) => setStatus('units', unit.id, s)}
+                        onSendForApproval={() => sendForApproval('units', unit.id)}
+                        onApprove={() => approveContent('units', unit.id)}
+                        onDeny={() => denyContent('units', unit.id)}
                         onDelete={() => deleteUnit(unit.id, unit.name, unit.lessons.length)}
+                        role={currentRole}
                       />
                     ))}
                     {selectedCourse.units.length === 0 && (
@@ -389,7 +458,15 @@ export default function AdminContentPage() {
                 // {selectedCourse.short_title} ▸ Unit {selectedLesson.unit.number}
               </p>
               <div className="flex gap-2 items-center flex-wrap">
-                <StatusControls status={selectedLesson.status} onChange={(s) => setStatus('lessons', selectedLesson.id, s)} />
+                <StatusControls
+                  status={selectedLesson.status}
+                  onChange={(s) => setStatus('lessons', selectedLesson.id, s)}
+                  onSendForApproval={() => sendForApproval('lessons', selectedLesson.id)}
+                  onApprove={() => approveContent('lessons', selectedLesson.id)}
+                  onDeny={() => denyContent('lessons', selectedLesson.id)}
+                  role={currentRole}
+                  isOwnContent={false}
+                />
                 <button onClick={() => deleteLesson(selectedLesson.id, selectedLesson.title)} className="px-3 py-1 bg-red-500 text-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">Delete lesson</button>
               </div>
             </div>
@@ -531,9 +608,14 @@ export default function AdminContentPage() {
                     onSaveReading={(draft) => updateReading(item.id, draft)}
                     onDelete={() => deleteItem(item)}
                     onStatusChange={(s) => setStatus(item._kind === 'question' ? 'questions' : 'readings', item.id, s)}
+                    onSendForApproval={() => sendForApproval(item._kind === 'question' ? 'questions' : 'readings', item.id)}
+                    onApprove={() => approveContent(item._kind === 'question' ? 'questions' : 'readings', item.id)}
+                    onDeny={() => denyContent(item._kind === 'question' ? 'questions' : 'readings', item.id)}
                     onMoveUp={() => moveItem(item, 'up')}
                     onMoveDown={() => moveItem(item, 'down')}
                     onTogglePool={() => toggleQuestionPool(item.id, item.pool)}
+                    role={currentRole}
+                    currentUserId={currentUser?.id}
                   />
                 ))}
               </div>
@@ -559,30 +641,110 @@ function StatusDot({ status, small }) {
 }
 
 // ============ STATUS CONTROLS ============
-function StatusControls({ status, onChange }) {
-  const pillStyle =
-    status === 'published' ? { background: '#00b395', color: 'white' } :
-    status === 'archived' ? { background: '#374151', color: 'white' } :
-    { background: '#fde047', color: '#1a1d29' }
+function StatusControls({ status, onChange, onSendForApproval, onApprove, onDeny, role, isOwnContent, contentTable }) {
+  const activeStyles = {
+    published: { background: '#00b395', color: 'white' },
+    archived: { background: '#374151', color: 'white' },
+    draft: { background: '#fde047', color: '#1a1d29' },
+    pending_review: { background: '#3b82f6', color: 'white' },
+  }
+  const paleStyles = {
+    published: { background: '#d1f5ed', color: '#0a6b5c' },
+    archived: { background: '#d1d5db', color: '#374151' },
+    draft: { background: '#fef9c3', color: '#854d0e' },
+    pending_review: { background: '#dbeafe', color: '#1e40af' },
+  }
+
+  const currentStyle = activeStyles[status] || activeStyles.draft
+  const isAdmin = role === 'admin' || role === 'editor'
+  const canPublish = isAdmin
+  // Reviewers can approve question_makers' content but not their own
+  const canApprove = (isAdmin || (role === 'reviewer' && !isOwnContent)) && status === 'pending_review'
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest border-2 border-gray-900 shadow-[2px_2px_0_#1a1d29]" style={pillStyle}>
-        Current status: {status}
+      <span
+        className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest border-2 border-gray-900 shadow-[2px_2px_0_#1a1d29]"
+        style={currentStyle}
+      >
+        Current status: {status.replace('_', ' ')}
       </span>
-      {status !== 'published' && (
-        <button onClick={() => onChange('published')} className="px-3 py-1 text-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]" style={{ background: '#00b395' }}>Publish</button>
+
+      {/* Approval actions (for reviewers/admins on pending content) */}
+      {canApprove && (
+        <>
+          <button
+            onClick={onApprove}
+            className="px-3 py-1 border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]"
+            style={{ background: '#00b395', color: 'white' }}
+          >
+            ✓ Approve & publish
+          </button>
+          <button
+            onClick={onDeny}
+            className="px-3 py-1 border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]"
+            style={{ background: '#fee2e2', color: '#7f1d1d' }}
+          >
+            ✗ Send back to draft
+          </button>
+        </>
       )}
-      {status !== 'draft' && (
-        <button onClick={() => onChange('draft')} className="px-3 py-1 border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]" style={{ background: '#fde047', color: '#1a1d29' }}>Move to draft</button>
+
+      {/* Direct publish (admins only) */}
+      {canPublish && status !== 'published' && (
+        <button
+          onClick={() => onChange('published')}
+          className="px-3 py-1 border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
+          style={paleStyles.published}
+        >
+          Publish
+        </button>
       )}
-      {status !== 'archived' && (
-        <button onClick={() => onChange('archived')} className="px-3 py-1 text-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]" style={{ background: '#374151' }}>Archive</button>
+
+      {/* Send for approval (non-admins) */}
+      {!canPublish && status === 'draft' && onSendForApproval && (
+        <button
+          onClick={onSendForApproval}
+          className="px-3 py-1 border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]"
+          style={{ background: '#dbeafe', color: '#1e40af' }}
+        >
+          📤 Send for approval
+        </button>
+      )}
+
+      {status !== 'draft' && status !== 'pending_review' && (
+        <button
+          onClick={() => onChange('draft')}
+          className="px-3 py-1 border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
+          style={paleStyles.draft}
+        >
+          Move to draft
+        </button>
+      )}
+
+      {/* Pending → withdraw (only for the creator if not admin) */}
+      {!canPublish && status === 'pending_review' && isOwnContent && (
+        <button
+          onClick={() => onChange('draft')}
+          className="px-3 py-1 border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]"
+          style={paleStyles.draft}
+        >
+          Withdraw to draft
+        </button>
+      )}
+
+      {canPublish && status !== 'archived' && (
+        <button
+          onClick={() => onChange('archived')}
+          className="px-3 py-1 border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
+          style={paleStyles.archived}
+        >
+          Archive
+        </button>
       )}
     </div>
   )
 }
-
 // ============ COURSE EDITOR ============
 function CourseEditor({ course, onUpdate }) {
   const [draft, setDraft] = useState(course)
@@ -607,7 +769,7 @@ function CourseEditor({ course, onUpdate }) {
 }
 
 // ============ UNIT ROW ============
-function UnitRow({ unit, onUpdate, onStatusChange, onDelete }) {
+function UnitRow({ unit, onUpdate, onStatusChange, onDelete, role, onSendForApproval, onApprove, onDeny }) {
   const [draft, setDraft] = useState(unit)
   useEffect(() => setDraft(unit), [unit.id])
   function commit(field) { if (draft[field] !== unit[field]) onUpdate(unit.id, field, draft[field]) }
@@ -620,7 +782,16 @@ function UnitRow({ unit, onUpdate, onStatusChange, onDelete }) {
         <span className="text-xs font-mono text-gray-500 px-2">{unit.lessons.length} lesson{unit.lessons.length === 1 ? '' : 's'}</span>
         <button onClick={onDelete} className="px-2 py-1 text-red-600 hover:bg-red-100 rounded text-sm" title="Delete unit">🗑</button>
       </div>
-      <div className="flex justify-end"><StatusControls status={unit.status} onChange={onStatusChange} /></div>
+      <div className="flex justify-end"><StatusControls
+                  status={selectedCourse.status}
+                  onChange={(s) => setStatus('courses', selectedCourse.id, s)}
+                  onSendForApproval={() => sendForApproval('courses', selectedCourse.id)}
+                  onApprove={() => approveContent('courses', selectedCourse.id)}
+                  onDeny={() => denyContent('courses', selectedCourse.id)}
+                  role={currentRole}
+                  isOwnContent={false}
+                  contentTable="courses"
+                /></div>
     </div>
   )
 }
@@ -641,7 +812,7 @@ function LessonMetaEditor({ lesson, onUpdate }) {
 }
 
 // ============ ITEM CARD (handles both questions and readings) ============
-function ItemCard({ index, item, isFirst, isLast, onSaveQuestion, onSaveReading, onDelete, onStatusChange, onMoveUp, onMoveDown, onTogglePool }) {
+function ItemCard({ index, item, isFirst, isLast, onSaveQuestion, onSaveReading, onDelete, onStatusChange, onSendForApproval, onApprove, onDeny, onMoveUp, onMoveDown, onTogglePool, role, currentUserId }) {
   if (item._kind === 'question') {
     return (
       <QuestionCardInner
@@ -649,8 +820,13 @@ function ItemCard({ index, item, isFirst, isLast, onSaveQuestion, onSaveReading,
         isFirst={isFirst} isLast={isLast}
         onSave={onSaveQuestion} onDelete={onDelete}
         onStatusChange={onStatusChange}
+        onSendForApproval={onSendForApproval}
+        onApprove={onApprove}
+        onDeny={onDeny}
         onMoveUp={onMoveUp} onMoveDown={onMoveDown}
         onTogglePool={onTogglePool}
+        role={role}
+        currentUserId={currentUserId}
       />
     )
   }
@@ -660,7 +836,12 @@ function ItemCard({ index, item, isFirst, isLast, onSaveQuestion, onSaveReading,
       isFirst={isFirst} isLast={isLast}
       onSave={onSaveReading} onDelete={onDelete}
       onStatusChange={onStatusChange}
+      onSendForApproval={onSendForApproval}
+      onApprove={onApprove}
+      onDeny={onDeny}
       onMoveUp={onMoveUp} onMoveDown={onMoveDown}
+      role={role}
+      currentUserId={currentUserId}
     />
   )
 }
@@ -675,7 +856,7 @@ function ReorderControls({ isFirst, isLast, onMoveUp, onMoveDown }) {
 }
 
 // ============ QUESTION CARD ============
-function QuestionCardInner({ index, question, isFirst, isLast, onSave, onDelete, onStatusChange, onMoveUp, onMoveDown, onTogglePool }) {
+function QuestionCardInner({ index, question, isFirst, isLast, onSave, onDelete, onStatusChange, onSendForApproval, onApprove, onDeny, onMoveUp, onMoveDown, onTogglePool, role, currentUserId }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(question)
 
@@ -699,11 +880,63 @@ function QuestionCardInner({ index, question, isFirst, isLast, onSave, onDelete,
         <p className="text-xs font-mono uppercase tracking-widest text-gray-600 mt-3 mb-2 font-bold">Choices — click the dot to mark the correct one</p>
         {draft.choices.map((choice, i) => (
           <div key={i} className="flex gap-2 items-center mb-2">
-            <input type="radio" name={`correct-${question.id}`} checked={draft.answer === i} onChange={() => setDraft({ ...draft, answer: i })} className="w-5 h-5 cursor-pointer" style={{ accentColor: '#00b395' }} />
-            <span className="w-7 h-7 border-2 border-gray-900 rounded-lg flex items-center justify-center font-black text-xs flex-shrink-0" style={draft.answer === i ? { background: '#00b395', color: 'white' } : { background: '#f6fbf8' }}>{String.fromCharCode(65 + i)}</span>
-            <input type="text" value={choice} onChange={(e) => { const c = [...draft.choices]; c[i] = e.target.value; setDraft({ ...draft, choices: c }) }} className="flex-1 p-2 border-2 border-gray-900 rounded-lg bg-white" />
+            <input
+              type="radio"
+              name={`correct-${question.id}`}
+              checked={draft.answer === i}
+              onChange={() => setDraft({ ...draft, answer: i })}
+              className="w-5 h-5 cursor-pointer"
+              style={{ accentColor: '#00b395' }}
+            />
+            <span
+              className="w-7 h-7 border-2 border-gray-900 rounded-lg flex items-center justify-center font-black text-xs flex-shrink-0"
+              style={draft.answer === i ? { background: '#00b395', color: 'white' } : { background: '#f6fbf8' }}
+            >
+              {String.fromCharCode(65 + i)}
+            </span>
+            <input
+              type="text"
+              value={choice}
+              onChange={(e) => {
+                const c = [...draft.choices]
+                c[i] = e.target.value
+                setDraft({ ...draft, choices: c })
+              }}
+              className="flex-1 p-2 border-2 border-gray-900 rounded-lg bg-white"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (draft.choices.length <= 2) {
+                  alert('A question needs at least 2 choices.')
+                  return
+                }
+                const newChoices = draft.choices.filter((_, idx) => idx !== i)
+                let newAnswer = draft.answer
+                if (draft.answer === i) newAnswer = 0 // reset to first choice if we deleted the answer
+                else if (draft.answer > i) newAnswer = draft.answer - 1 // shift down
+                setDraft({ ...draft, choices: newChoices, answer: newAnswer })
+              }}
+              className="px-2 py-1 text-red-600 hover:bg-red-100 rounded text-sm border border-transparent hover:border-red-300"
+              title="Delete this choice"
+              disabled={draft.choices.length <= 2}
+            >
+              🗑
+            </button>
           </div>
         ))}
+
+        {draft.choices.length < 8 && (
+          <button
+            type="button"
+            onClick={() => {
+              setDraft({ ...draft, choices: [...draft.choices, `Option ${String.fromCharCode(65 + draft.choices.length)}`] })
+            }}
+            className="mt-1 px-3 py-1.5 bg-white border-2 border-dashed border-gray-400 rounded-lg text-xs font-bold text-gray-700 hover:border-gray-900 hover:bg-gray-50 transition-all"
+          >
+            + Add choice
+          </button>
+        )}
 
         <div className="mt-3"><Field label="Explanation"><textarea value={draft.explanation || ''} onChange={(e) => setDraft({ ...draft, explanation: e.target.value })} rows={2} className="w-full p-2 border-2 border-gray-900 rounded-lg" style={{ background: '#f6fbf8' }} /></Field></div>
       </div>
@@ -735,7 +968,15 @@ function QuestionCardInner({ index, question, isFirst, isLast, onSave, onDelete,
             >
               ↔ {question.pool === 'practice' ? 'To lesson' : 'To practice'}
             </button>
-            <StatusControls status={question.status} onChange={onStatusChange} />
+           <StatusControls
+              status={question.status}
+              onChange={onStatusChange}
+              onSendForApproval={onSendForApproval}
+              onApprove={onApprove}
+              onDeny={onDeny}
+              role={role}
+              isOwnContent={question.created_by === currentUserId}
+            />
             <button onClick={startEdit} className="px-3 py-1 bg-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">Edit</button>
             <button onClick={onDelete} className="px-3 py-1 bg-red-500 text-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">Delete</button>
           </div>
@@ -756,7 +997,7 @@ function QuestionCardInner({ index, question, isFirst, isLast, onSave, onDelete,
 }
 
 // ============ READING CARD ============
-function ReadingCardInner({ index, reading, isFirst, isLast, onSave, onDelete, onStatusChange, onMoveUp, onMoveDown }) {
+function ReadingCardInner({ index, reading, isFirst, isLast, onSave, onDelete, onStatusChange, onSendForApproval, onApprove, onDeny, onMoveUp, onMoveDown, role, currentUserId }) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(reading)
 
@@ -800,11 +1041,17 @@ function ReadingCardInner({ index, reading, isFirst, isLast, onSave, onDelete, o
             📖 Reading — item {index + 1}
             <StatusDot status={reading.status} />
           </p>
-          <div className="flex gap-1.5 flex-wrap items-center">
-            <StatusControls status={reading.status} onChange={onStatusChange} />
-            <button onClick={startEdit} className="px-3 py-1 bg-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">Edit</button>
-            <button onClick={onDelete} className="px-3 py-1 bg-red-500 text-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">Delete</button>
-          </div>
+          <div className="flex justify-end">
+        <StatusControls
+              status={reading.status}
+              onChange={onStatusChange}
+              onSendForApproval={onSendForApproval}
+              onApprove={onApprove}
+              onDeny={onDeny}
+              role={role}
+              isOwnContent={reading.created_by === currentUserId}
+            />
+      </div>
         </div>
         <h4 className="font-black text-base mb-2">{reading.title}</h4>
         <div className="text-xs text-gray-700 max-h-24 overflow-hidden relative">

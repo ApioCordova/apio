@@ -27,7 +27,8 @@ export default function AdminLayout({ children }) {
         .eq('id', user.id)
         .single()
 
-      if (!profileData || (profileData.role !== 'admin' && profileData.role !== 'editor')) {
+      const allowedRoles = ['admin', 'editor', 'reviewer', 'question_maker']
+      if (!profileData || !allowedRoles.includes(profileData.role)) {
         setAccessDenied(true)
         setLoading(false)
         return
@@ -90,8 +91,14 @@ export default function AdminLayout({ children }) {
           <span className="text-sm text-gray-700 font-medium hidden md:inline">
             {profile.full_name || profile.email}
           </span>
-          <span className="px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase border-2 border-gray-900 text-white" style={{ background: profile.role === 'admin' ? '#00b395' : '#eab308' }}>
-            {profile.role}
+          <span className="px-3 py-1 rounded-full text-xs font-black tracking-widest uppercase border-2 border-gray-900 text-white" style={{
+            background:
+              profile.role === 'admin' ? '#00b395' :
+              profile.role === 'reviewer' ? '#3b82f6' :
+              profile.role === 'question_maker' ? '#8b5cf6' :
+              '#eab308'
+          }}>
+            {profile.role.replace('_', ' ')}
           </span>
           <Link
             href="/dashboard"
