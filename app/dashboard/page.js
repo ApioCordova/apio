@@ -64,7 +64,7 @@ export default function DashboardPage() {
   }
 
   const displayName = profile?.full_name || user?.email?.split('@')[0]
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'editor'
+  const isAdmin = ['admin', 'editor', 'reviewer', 'question_maker'].includes(profile?.role)
 
   return (
     <div className="min-h-screen" style={{ background: '#f6fbf8' }}>
