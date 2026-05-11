@@ -18,7 +18,7 @@ export const metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: "/apio-logo.png",
-    apple: "/apio-logo.png",
+    apple: "/apio-touch-icon.png",
   },
   themeColor: "#00b395",
   appleWebApp: {
