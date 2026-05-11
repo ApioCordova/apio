@@ -13,10 +13,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "apio",
+  title: "Apio",
   description: "Master AP courses one quest at a time.",
+  manifest: "/manifest.json",
   icons: {
     icon: "/apio-logo.png",
+    apple: "/apio-logo.png",
+  },
+  themeColor: "#00b395",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Apio",
   },
 };
 

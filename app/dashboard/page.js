@@ -69,27 +69,24 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen" style={{ background: '#f6fbf8' }}>
       {/* Top bar */}
-      <div className="border-b-[3px] border-gray-900 px-6 py-3 flex items-center justify-between" style={{ background: '#b4f1e7' }}>
-        <div className="flex items-center gap-3">
-          <Image src="/apio-logo.png" alt="Apio" width={36} height={36} className="rounded-lg" />
-          <span className="text-2xl font-black tracking-tight">Apio</span>
+      <div className="border-b-[3px] border-gray-900 px-4 md:px-6 py-3 flex items-center justify-between gap-2" style={{ background: '#b4f1e7' }}>
+        <div className="flex items-center gap-2">
+          <Image src="/apio-logo.png" alt="Apio" width={32} height={32} className="rounded-lg" />
+          <span className="text-xl md:text-2xl font-black tracking-tight">Apio</span>
         </div>
 
-        <div className="flex items-center gap-3">
-          
-
+        <div className="flex items-center gap-2">
           {isAdmin && (
             <Link
               href="/admin"
-              className="px-3 py-1.5 bg-gray-900 text-white rounded-full text-xs font-bold tracking-widest uppercase shadow-[2px_2px_0_#1a1d29] hover:opacity-80 transition-colors"
+              className="px-2.5 py-1 bg-gray-900 text-white rounded-full text-xs font-bold tracking-widest uppercase shadow-[2px_2px_0_#1a1d29]"
             >
-              Control Center
+              Admin
             </Link>
           )}
-
           <button
             onClick={handleLogout}
-            className="px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
+            className="px-2.5 py-1 bg-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]"
           >
             Log out
           </button>
@@ -98,15 +95,15 @@ export default function DashboardPage() {
 
       {/* Main content */}
       <div className="max-w-5xl mx-auto p-8">
-        <div className="mb-10">
+        <div className="mb-8 md:mb-10">
           <p className="text-xs font-mono tracking-widest uppercase mb-2" style={{ color: '#00b395' }}>
             // Welcome back
           </p>
-          <h1 className="text-5xl md:text-6xl font-black tracking-tight leading-none mb-3">
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight leading-none mb-3">
             Hey, <span className="italic font-normal" style={{ color: '#00b395' }}>{displayName}</span>.
           </h1>
-          <p className="text-gray-700 max-w-xl">
-            Pick a course to continue your AP quest. Bite-sized lessons, real exam-style questions, progress that follows you.
+          <p className="text-gray-700 max-w-xl text-sm md:text-base">
+            Pick a course to continue your AP quest.
           </p>
         </div>
 

@@ -72,7 +72,7 @@ export default function LoginPage() {
         <span className="text-2xl font-black tracking-tight">Apio</span>
       </Link>
 
-      <div className="w-full max-w-md bg-white border-[3px] border-gray-900 rounded-2xl p-8 shadow-[8px_8px_0_#1a1d29]">
+      <div className="w-full max-w-md bg-white border-[3px] border-gray-900 rounded-2xl p-5 md:p-8 shadow-[4px_4px_0_#1a1d29] md:shadow-[8px_8px_0_#1a1d29] mx-4 md:mx-0">
         <h1 className="text-3xl font-black tracking-tight mb-2">
           {mode === 'signup' ? 'Create your account' : 'Welcome back'}
         </h1>

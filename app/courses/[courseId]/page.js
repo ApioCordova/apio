@@ -109,15 +109,12 @@ if (courseData && !isAdminUser) {
   return (
     <div className="min-h-screen" style={{ background: '#f6fbf8' }}>
       {/* Top bar */}
-      <div className="border-b-[3px] border-gray-900 px-6 py-3 flex items-center justify-between sticky top-0 z-40" style={{ background: '#b4f1e7' }}>
-        <Link href="/dashboard" className="flex items-center gap-3">
-          <Image src="/apio-logo.png" alt="Apio" width={36} height={36} className="rounded-lg" />
-          <span className="text-2xl font-black tracking-tight">Apio</span>
+      <div className="border-b-[3px] border-gray-900 px-4 md:px-6 py-3 flex items-center justify-between sticky top-0 z-40" style={{ background: '#b4f1e7' }}>
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <Image src="/apio-logo.png" alt="Apio" width={32} height={32} className="rounded-lg" />
+          <span className="text-xl md:text-2xl font-black tracking-tight">Apio</span>
         </Link>
-
-        
       </div>
-
       {/* Main */}
       <div className="max-w-3xl mx-auto p-6 pb-20">
         <Link
@@ -227,7 +224,7 @@ if (isCompleted) {
                         </p>
 
                         {popupLessonId === lesson.id && !isLocked && (
-                          <div className="absolute top-0 left-[110%] z-50 w-64 bg-gray-900 text-white p-4 rounded-xl shadow-[4px_4px_0_#1a1d29]">
+                          <div className="absolute top-full mt-3 left-1/2 -translate-x-1/2 md:top-0 md:mt-0 md:left-[110%] md:translate-x-0 z-50 w-64 bg-gray-900 text-white p-4 rounded-xl shadow-[4px_4px_0_#1a1d29]">
                             <h4 className="font-black text-base mb-1">{lesson.title}</h4>
                             <p className="text-xs text-gray-300 mb-3">{lesson.description}</p>
                             <div className="flex flex-col gap-2">

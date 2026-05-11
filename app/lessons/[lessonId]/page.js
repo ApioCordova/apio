@@ -242,7 +242,7 @@ export default function LessonPage() {
           </div>
 
           <p className="text-xs font-mono tracking-widest uppercase font-bold text-gray-700 mb-3">How many today?</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2 md:gap-3">
             {[5, 10, 20].map(size => (
               <button
                 key={size}
@@ -392,8 +392,8 @@ export default function LessonPage() {
               </button>
             </div>
           ) : (
-            <div className={`border-t-[3px] border-gray-900 px-5 py-3 flex items-center justify-between gap-4 flex-wrap flex-shrink-0 ${isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
-              <div className="flex-1 min-w-48">
+            <div className={`border-t-[3px] border-gray-900 px-4 py-3 flex items-center justify-between gap-3 flex-wrap flex-shrink-0 ${isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
+              <div className="flex-1 min-w-0">
                 <h3 className={`text-lg font-black mb-0.5 ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
                   {isCorrect ? 'Excellent.' : 'Not quite.'}
                 </h3>
