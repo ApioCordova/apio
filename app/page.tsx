@@ -50,7 +50,7 @@ export default function HomePage() {
         </h1>
 
         <p className="text-lg text-gray-700 mb-10 max-w-lg mx-auto">
-          Master AP courses one quest at a time. Bite-sized lessons, real exam-style questions, progress that follows you everywhere.
+          Master AP courses one bite at a time. digestable lessons, real exam-style questions, progress that follows you everywhere.
         </p>
 
         <div className="flex gap-4 justify-center flex-wrap">
