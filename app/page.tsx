@@ -1,9 +1,37 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { supabase } from '@/lib/supabase'
 
 export default function HomePage() {
+  const router = useRouter()
+  const [checking, setChecking] = useState(true)
+
+  useEffect(() => {
+    async function checkSession() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        router.push('/dashboard')
+      } else {
+        setChecking(false)
+      }
+    }
+    checkSession()
+  }, [router])
+
+  // While checking auth, show nothing (prevents flash of homepage before redirect)
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#f6fbf8' }}>
+        <Image src="/apio-logo.png" alt="Apio" width={48} height={48} className="rounded-xl animate-pulse" />
+      </div>
+    )
+  }
+
+  // Not logged in — show the welcome page
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ background: '#f6fbf8' }}>
       <div className="max-w-2xl text-center">
