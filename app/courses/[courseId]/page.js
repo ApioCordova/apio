@@ -203,15 +203,13 @@ export default function CoursePage() {
                     >
                       <div className="relative">
                         {/* Ring segments SVG */}
+                        
                         {maxLevels > 0 && (
                           <svg
                             width="120" height="120"
-                            className="absolute -rotate-90"
+                            className="absolute -inset-0"
                             style={{
                               pointerEvents: 'none',
-                              top: '50%',
-                              left: '50%',
-                              transform: 'translate(-50%, -50%) rotate(-90deg)',
                             }}
                           >
                             {Array.from({ length: maxLevels }).map((_, segIdx) => {
