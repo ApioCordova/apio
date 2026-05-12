@@ -97,13 +97,13 @@ export default function DashboardPage() {
       <div className="max-w-5xl mx-auto p-8">
         <div className="mb-8 md:mb-10">
           <p className="text-xs font-mono tracking-widest uppercase mb-2" style={{ color: '#00b395' }}>
-            // Welcome back
+            Welcome back!
           </p>
           <h1 className="text-3xl md:text-5xl lg:text-6xl font-black tracking-tight leading-none mb-3">
-            Hey, <span className="italic font-normal" style={{ color: '#00b395' }}>{displayName}</span>.
+            Howdy, <span className="italic font-normal" style={{ color: '#00b395' }}>{displayName}</span>.
           </h1>
           <p className="text-gray-700 max-w-xl text-sm md:text-base">
-            Pick a course to continue your AP quest.
+            What would you like to study today?
           </p>
         </div>
 
@@ -156,14 +156,14 @@ export default function DashboardPage() {
               +
             </div>
             <p className="font-bold text-gray-700">More AP courses</p>
-            <p className="text-xs text-gray-500 mt-1">Calculus BC, U.S. Government, Human Geography, Business, and Cybersecurity coming soon</p>
+            <p className="text-xs text-gray-500 mt-1">Calculus BC, U.S. Government, and Human Geography coming soon</p>
           </div>
         </div>
 
         <div className="mt-12 p-4 bg-white border-2 border-dashed border-gray-300 rounded-xl text-xs font-mono text-gray-500">
-          <span style={{ color: '#00b395' }}>Howdy!</span>
+          <span style={{ color: '#00b395' }}>Last update: 1.01. Fixed dashboard UI, added AP Cybersecurity and AP Business, increased capacity, and fixed mistakes.</span>
           <br />
-          logged in as <strong>{user?.email}</strong> · role: <strong>{profile?.role || 'student'}</strong> · {courses.length} courses loaded
+          logged in as <strong>{user?.email}</strong> · role: <strong>{profile?.role || 'student'}</strong> · support: demiancordova@cordovaibe.com
         </div>
         <p className="text-xs text-gray-400 font-mono mt-4">v1.01</p>
       </div>
