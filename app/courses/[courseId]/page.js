@@ -244,15 +244,10 @@ export default function CoursePage() {
                         </button>
 
                         {/* Lesson title + level indicator */}
-                        <div className="absolute left-1/2 -translate-x-1/2 -bottom-11 text-center">
+                        <div className="absolute left-1/2 -translate-x-1/2 -bottom-8 text-center">
                           <p className="text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">
                             {lesson.title}
                           </p>
-                          {maxLevels > 1 && !isLocked && (
-                            <p className="text-[10px] font-mono text-gray-500 mt-0.5">
-                              {isFullyCompleted ? 'Mastered' : `${levelsCompleted}/${maxLevels}`}
-                            </p>
-                          )}
                         </div>
 
                         {/* Popup */}
