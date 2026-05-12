@@ -207,7 +207,7 @@ export default function CoursePage() {
                         {maxLevels > 0 && (
                           <svg
                             width="120" height="120"
-                            className="absolute inset-0 -translate-x-4 -translate-y-2.5"
+                            className="absolute inset-0 -translate-x-3.5 -translate-y-2.75"
                             style={{
                               pointerEvents: 'none',
                             }}
