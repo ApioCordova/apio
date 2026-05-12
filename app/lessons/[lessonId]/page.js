@@ -19,11 +19,16 @@ export default function LessonPage() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // Level tracking
+  const [currentLevelNumber, setCurrentLevelNumber] = useState(1)
+  const [maxLevels, setMaxLevels] = useState(1)
+  const [levelsCompleted, setLevelsCompleted] = useState(0)
+
   // Practice-mode specific state
   const [practiceSetupNeeded, setPracticeSetupNeeded] = useState(false)
   const [practicePoolStats, setPracticePoolStats] = useState({ total: 0, mastered: 0 })
   const [allPracticeQuestions, setAllPracticeQuestions] = useState([])
-  const [masteryByQuestion, setMasteryByQuestion] = useState({}) // { qid: box_level }
+  const [masteryByQuestion, setMasteryByQuestion] = useState({})
 
   // Quiz state
   const [itemIndex, setItemIndex] = useState(0)
@@ -52,6 +57,32 @@ export default function LessonPage() {
       setLesson(lessonData)
       setCourse(lessonData.unit?.course)
 
+      // Load all levels for this lesson
+      let levelsQuery = supabase.from('levels').select('*').eq('lesson_id', lessonId).order('number')
+      if (!isAdminUser) levelsQuery = levelsQuery.eq('status', 'published')
+      const { data: levelsData } = await levelsQuery
+      const allLevels = levelsData || []
+      setMaxLevels(allLevels.length)
+
+      // Load user's progress for this lesson
+      const { data: progressData } = await supabase
+        .from('progress')
+        .select('levels_completed, current_level')
+        .eq('user_id', user.id)
+        .eq('lesson_id', lessonId)
+        .single()
+
+      const userLevelsCompleted = progressData?.levels_completed || 0
+      const userCurrentLevel = progressData?.current_level || 1
+      setLevelsCompleted(userLevelsCompleted)
+
+      // Determine which level to play
+      const levelToPlay = Math.min(userCurrentLevel, allLevels.length)
+      setCurrentLevelNumber(levelToPlay)
+
+      // Find the level record for the current level
+      const currentLevel = allLevels.find(l => l.number === levelToPlay)
+
       // Load questions and readings
       let qQuery = supabase.from('questions').select('*').eq('lesson_id', lessonId)
       let rQuery = supabase.from('readings').select('*').eq('lesson_id', lessonId)
@@ -62,11 +93,10 @@ export default function LessonPage() {
       const [{ data: qData }, { data: rData }] = await Promise.all([qQuery, rQuery])
 
       if (isPracticeMode) {
-        // Practice mode — only practice-pool questions
+        // Practice mode — only practice-pool questions (no level filtering)
         const practiceQs = (qData || []).filter(q => q.pool === 'practice')
         setAllPracticeQuestions(practiceQs)
 
-        // Load mastery levels for each practice question
         const ids = practiceQs.map(q => q.id)
         if (ids.length > 0) {
           const { data: masteryData } = await supabase
@@ -77,21 +107,21 @@ export default function LessonPage() {
           const map = {}
           ;(masteryData || []).forEach(m => { map[m.question_id] = m.box_level })
           setMasteryByQuestion(map)
-
           const masteredCount = (masteryData || []).filter(m => m.box_level >= 5).length
           setPracticePoolStats({ total: practiceQs.length, mastered: masteredCount })
         } else {
           setPracticePoolStats({ total: 0, mastered: 0 })
         }
-
         setPracticeSetupNeeded(true)
         setLoading(false)
       } else {
-        // Lesson mode — readings + lesson-pool questions in order
-        const lessonQs = (qData || []).filter(q => q.pool === 'lesson')
+        // Lesson mode — filter by current level
+        const levelId = currentLevel?.id
+        const lessonQs = (qData || []).filter(q => q.pool === 'lesson' && q.level_id === levelId)
+        const lessonRs = (rData || []).filter(r => r.level_id === levelId)
         const combined = [
           ...lessonQs.map(q => ({ ...q, _kind: 'question' })),
-          ...(rData || []).map(r => ({ ...r, _kind: 'reading' })),
+          ...lessonRs.map(r => ({ ...r, _kind: 'reading' })),
         ].sort((a, b) => a.sort_order - b.sort_order)
         setItems(combined)
         setLoading(false)
@@ -100,81 +130,68 @@ export default function LessonPage() {
     loadData()
   }, [lessonId, router, isPracticeMode])
 
-  // ============ START PRACTICE SESSION ============
+  // ============ PRACTICE SESSION ============
   function startPracticeSession(sessionSize) {
-    // Pick questions weighted by box level (lower box = more likely)
-    // box 1 weight = 5, box 2 = 4, box 3 = 3, box 4 = 2, box 5 = 1, no attempts = 5 (treat as box 1)
     const weighted = allPracticeQuestions.map(q => {
       const box = masteryByQuestion[q.id] || 1
-      const weight = 6 - box // box 1 → 5, box 5 → 1
-      return { q, weight }
+      return { q, weight: 6 - box }
     })
-
-    // Filter out fully mastered (box 5) unless we have nothing else
     const notMastered = weighted.filter(w => (masteryByQuestion[w.q.id] || 1) < 5)
     const pool = notMastered.length > 0 ? notMastered : weighted
-
-    // Weighted random shuffle
     const picked = []
     const available = [...pool]
     const target = sessionSize === 'all' ? available.length : Math.min(sessionSize, available.length)
-
     while (picked.length < target && available.length > 0) {
       const totalWeight = available.reduce((s, w) => s + w.weight, 0)
       let r = Math.random() * totalWeight
       let pickedIdx = 0
-      for (let i = 0; i < available.length; i++) {
-        r -= available[i].weight
-        if (r <= 0) { pickedIdx = i; break }
-      }
+      for (let i = 0; i < available.length; i++) { r -= available[i].weight; if (r <= 0) { pickedIdx = i; break } }
       picked.push(available[pickedIdx].q)
       available.splice(pickedIdx, 1)
     }
-
     setItems(picked.map(q => ({ ...q, _kind: 'question' })))
     setPracticeSetupNeeded(false)
-    setItemIndex(0)
-    setSelected(null)
-    setChecked(false)
-    setCorrectCount(0)
+    setItemIndex(0); setSelected(null); setChecked(false); setCorrectCount(0)
   }
 
   const item = items[itemIndex]
 
   async function logAttempt(questionId, wasCorrect) {
-    await supabase.from('question_attempts').insert({
-      user_id: user.id,
-      question_id: questionId,
-      was_correct: wasCorrect,
-    })
+    await supabase.from('question_attempts').insert({ user_id: user.id, question_id: questionId, was_correct: wasCorrect })
   }
 
   async function onCheck() {
     if (selected === null) return
     setChecked(true)
     const wasCorrect = selected === item.answer
-    if (wasCorrect) setCorrectCount((c) => c + 1)
-    // Log attempt for spaced repetition (both lesson + practice modes)
+    if (wasCorrect) setCorrectCount(c => c + 1)
     await logAttempt(item.id, wasCorrect)
   }
 
   async function onContinue() {
     if (itemIndex + 1 < items.length) {
-      setItemIndex(itemIndex + 1)
-      setSelected(null)
-      setChecked(false)
+      setItemIndex(itemIndex + 1); setSelected(null); setChecked(false)
     } else {
       const questions = items.filter(i => i._kind === 'question')
       const finalCorrect = correctCount + (item._kind === 'question' && selected === item.answer ? 1 : 0)
-      const xpEarned = finalCorrect * 10
 
       if (!isPracticeMode) {
         const score = questions.length > 0 ? finalCorrect / questions.length : 1
         const dueAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
-        await supabase.from('progress').upsert(
-          { user_id: user.id, lesson_id: lessonId, score, completed_at: new Date().toISOString(), due_at: dueAt },
-          { onConflict: 'user_id,lesson_id' }
-        )
+        const newLevelsCompleted = levelsCompleted + 1
+        const newCurrentLevel = currentLevelNumber + 1
+
+        await supabase.from('progress').upsert({
+          user_id: user.id,
+          lesson_id: lessonId,
+          score,
+          completed_at: new Date().toISOString(),
+          due_at: dueAt,
+          levels_completed: newLevelsCompleted,
+          current_level: newCurrentLevel,
+        }, { onConflict: 'user_id,lesson_id' })
+
+        setLevelsCompleted(newLevelsCompleted)
       }
       setCompleted(true)
     }
@@ -182,12 +199,8 @@ export default function LessonPage() {
 
   function onReadingNext() {
     if (itemIndex + 1 < items.length) {
-      setItemIndex(itemIndex + 1)
-      setSelected(null)
-      setChecked(false)
-    } else {
-      onContinue()
-    }
+      setItemIndex(itemIndex + 1); setSelected(null); setChecked(false)
+    } else { onContinue() }
   }
 
   if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: '#f6fbf8' }}><p className="text-gray-600 font-mono text-sm">Loading lesson...</p></div>
@@ -199,35 +212,28 @@ export default function LessonPage() {
     </div>
   )
 
-  // ============ PRACTICE SETUP SCREEN ============
+  // ============ PRACTICE SETUP ============
   if (isPracticeMode && practiceSetupNeeded) {
     const { total, mastered } = practicePoolStats
     const remaining = total - mastered
 
-    if (total === 0) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ background: '#f6fbf8' }}>
-          <h1 className="text-3xl font-black tracking-tight mb-3">No practice questions yet</h1>
-          <p className="text-gray-600 mb-6 max-w-md">This lesson does not have any practice questions yet. Practice questions are separate from lesson questions.</p>
-          <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="px-6 py-3 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]" style={{ background: '#00b395' }}>← Back to lesson tree</Link>
-        </div>
-      )
-    }
+    if (total === 0) return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ background: '#f6fbf8' }}>
+        <h1 className="text-3xl font-black tracking-tight mb-3">No practice questions yet</h1>
+        <p className="text-gray-600 mb-6 max-w-md">This lesson does not have any practice questions yet.</p>
+        <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="px-6 py-3 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]" style={{ background: '#00b395' }}>← Back</Link>
+      </div>
+    )
 
     const percentMastered = Math.round((mastered / total) * 100)
-
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ background: '#f6fbf8' }}>
         <div className="max-w-md w-full">
-          <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="inline-flex items-center gap-1 px-3 py-1.5 mb-4 bg-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]">
-            ← Back
-          </Link>
-
+          <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="inline-flex items-center gap-1 px-3 py-1.5 mb-4 bg-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]">← Back</Link>
           <p className="text-xs font-mono tracking-widest uppercase mb-2" style={{ color: '#00b395' }}>// practice problems</p>
           <h1 className="text-3xl font-black tracking-tight leading-tight mb-1">{lesson.title}</h1>
-          <p className="text-sm text-gray-600 mb-6">Drill the practice question pool. Wrong answers come back more often, mastered questions appear less.</p>
+          <p className="text-sm text-gray-600 mb-6">Drill the practice question pool. Wrong answers come back more often.</p>
 
-          {/* Mastery progress */}
           <div className="bg-white border-[3px] border-gray-900 rounded-2xl p-5 mb-6 shadow-[4px_4px_0_#1a1d29]">
             <div className="flex justify-between items-center mb-2">
               <p className="text-xs font-mono tracking-widest uppercase font-bold text-gray-700">Your mastery</p>
@@ -236,29 +242,20 @@ export default function LessonPage() {
             <div className="h-3 bg-gray-100 border-2 border-gray-900 rounded-full overflow-hidden mb-2">
               <div className="h-full transition-all" style={{ width: `${percentMastered}%`, background: '#fbbf24' }} />
             </div>
-            <p className="text-xs text-gray-600">
-              <strong>{mastered}</strong> mastered · <strong>{remaining}</strong> still drilling · <strong>{total}</strong> total
-            </p>
+            <p className="text-xs text-gray-600"><strong>{mastered}</strong> mastered · <strong>{remaining}</strong> drilling · <strong>{total}</strong> total</p>
           </div>
 
           <p className="text-xs font-mono tracking-widest uppercase font-bold text-gray-700 mb-3">How many today?</p>
-          <div className="grid grid-cols-2 gap-2 md:gap-3">
+          <div className="grid grid-cols-2 gap-2">
             {[5, 10, 20].map(size => (
-              <button
-                key={size}
-                onClick={() => startPracticeSession(size)}
-                disabled={size > remaining && remaining < total}
-                className="p-4 bg-white border-[2.5px] border-gray-900 rounded-xl font-black shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all text-center disabled:opacity-40 disabled:cursor-not-allowed"
-              >
+              <button key={size} onClick={() => startPracticeSession(size)} disabled={size > remaining && remaining < total}
+                className="p-4 bg-white border-[2.5px] border-gray-900 rounded-xl font-black shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all text-center disabled:opacity-40">
                 <p className="text-3xl mb-0.5">{Math.min(size, remaining)}</p>
                 <p className="text-xs uppercase tracking-widest text-gray-600">questions</p>
               </button>
             ))}
-            <button
-              onClick={() => startPracticeSession('all')}
-              className="p-4 text-white border-[2.5px] border-gray-900 rounded-xl font-black shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all text-center"
-              style={{ background: '#00b395' }}
-            >
+            <button onClick={() => startPracticeSession('all')}
+              className="p-4 text-white border-[2.5px] border-gray-900 rounded-xl font-black shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all text-center" style={{ background: '#00b395' }}>
               <p className="text-3xl mb-0.5">All {remaining}</p>
               <p className="text-xs uppercase tracking-widest opacity-90">marathon</p>
             </button>
@@ -271,43 +268,66 @@ export default function LessonPage() {
   if (items.length === 0) return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ background: '#f6fbf8' }}>
       <h1 className="text-3xl font-black tracking-tight mb-3">No content yet</h1>
-      <p className="text-gray-600 mb-6">This lesson does not have content yet.</p>
-      <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="px-6 py-3 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]" style={{ background: '#00b395' }}>← Back to lesson tree</Link>
+      <p className="text-gray-600 mb-6">This level does not have content yet.</p>
+      <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="px-6 py-3 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]" style={{ background: '#00b395' }}>← Back</Link>
     </div>
   )
 
-  // Completion screen
+  // ============ COMPLETION SCREEN ============
   if (completed) {
     const questions = items.filter(i => i._kind === 'question')
     const accuracy = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 100
+    const isFullyMastered = levelsCompleted >= maxLevels
+    const hasNextLevel = !isPracticeMode && levelsCompleted < maxLevels
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ background: '#f6fbf8' }}>
-        <div className="w-28 h-28 border-[4px] border-gray-900 rounded-full flex items-center justify-center text-5xl mb-5 shadow-[0_6px_0_#1a1d29]" style={{ background: '#b4f1e7' }}>
-          {accuracy === 100 ? '🏆' : accuracy >= 70 ? '⭐' : '💪'}
+        <div className="w-28 h-28 border-[4px] border-gray-900 rounded-full flex items-center justify-center text-5xl mb-5 shadow-[0_6px_0_#1a1d29]" style={{ background: isFullyMastered ? '#fbbf24' : '#b4f1e7' }}>
+          {isFullyMastered ? '🏆' : accuracy === 100 ? '⭐' : accuracy >= 70 ? '✓' : '💪'}
         </div>
+
         <h1 className="text-4xl font-black tracking-tight mb-2 leading-none">
-          {isPracticeMode ? 'Practice complete:' : 'Quest complete:'}
+          {isPracticeMode ? 'Practice complete!' : isFullyMastered ? 'Lesson mastered!' : `Level ${currentLevelNumber} complete!`}
         </h1>
         <p className="text-2xl italic font-normal mb-2" style={{ color: '#00b395' }}>{lesson.title}</p>
-        {isPracticeMode && <p className="text-xs text-gray-500 mb-6 font-mono uppercase tracking-widest">// practice mode — XP not earned, but mastery tracked</p>}
+
+        {!isPracticeMode && maxLevels > 1 && (
+          <div className="flex gap-1.5 mb-4 mt-2">
+            {Array.from({ length: maxLevels }).map((_, i) => (
+              <div key={i} className="w-8 h-2 rounded-full border border-gray-900"
+                style={{ background: i < levelsCompleted ? '#fbbf24' : 'rgba(0,0,0,0.1)' }} />
+            ))}
+          </div>
+        )}
+
+        {isPracticeMode && <p className="text-xs text-gray-500 mb-4 font-mono uppercase tracking-widest">// practice mode — mastery tracked</p>}
+        {!isPracticeMode && hasNextLevel && <p className="text-sm text-gray-600 mb-4">Level {levelsCompleted} of {maxLevels} complete. Keep going!</p>}
+        {!isPracticeMode && isFullyMastered && <p className="text-sm font-bold mb-4" style={{ color: '#fbbf24' }}>⭐ All {maxLevels} levels complete!</p>}
 
         <div className="flex gap-3 mb-7 flex-wrap justify-center">
           <div className="bg-white border-[3px] border-gray-900 rounded-xl px-5 py-3 shadow-[3px_3px_0_#1a1d29]">
             <p className="text-xs font-mono tracking-widest uppercase text-gray-600 mb-0.5">Accuracy</p>
             <p className="text-2xl font-black text-teal-600">{accuracy}%</p>
           </div>
+          {!isPracticeMode && maxLevels > 1 && (
+            <div className="bg-white border-[3px] border-gray-900 rounded-xl px-5 py-3 shadow-[3px_3px_0_#1a1d29]">
+              <p className="text-xs font-mono tracking-widest uppercase text-gray-600 mb-0.5">Progress</p>
+              <p className="text-2xl font-black" style={{ color: '#fbbf24' }}>{levelsCompleted}/{maxLevels}</p>
+            </div>
+          )}
         </div>
 
-        <div className="flex gap-2">
-          <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="px-6 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm" style={{ background: '#00b395' }}>
+        <div className="flex gap-2 flex-wrap justify-center">
+          {hasNextLevel && (
+            <button onClick={() => window.location.reload()} className="px-6 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm" style={{ background: '#00b395' }}>
+              Start Level {levelsCompleted + 1} →
+            </button>
+          )}
+          <Link href={course ? `/courses/${course.id}` : '/dashboard'} className={`px-6 py-2.5 border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm ${hasNextLevel ? 'bg-white' : 'text-white'}`} style={!hasNextLevel ? { background: '#00b395' } : {}}>
             Back to lesson tree
           </Link>
           {isPracticeMode && (
-            <button
-              onClick={() => window.location.reload()}
-              className="px-6 py-2.5 bg-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm"
-            >
+            <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm">
               Practice again
             </button>
           )}
@@ -327,9 +347,11 @@ export default function LessonPage() {
         <div className="flex-1 h-3 bg-white border-2 border-gray-900 rounded-full overflow-hidden">
           <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: '#00b395' }} />
         </div>
-        {isPracticeMode && (
+        {isPracticeMode ? (
           <span className="text-xs font-mono uppercase tracking-widest font-bold" style={{ color: '#00b395' }}>practice</span>
-        )}
+        ) : maxLevels > 1 ? (
+          <span className="text-xs font-mono uppercase tracking-widest font-bold" style={{ color: '#00b395' }}>Lvl {currentLevelNumber}/{maxLevels}</span>
+        ) : null}
       </div>
 
       {item._kind === 'reading' ? (
@@ -337,13 +359,11 @@ export default function LessonPage() {
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl w-full mx-auto px-5 py-6">
               <p className="text-xs font-mono tracking-widest uppercase mb-2" style={{ color: '#00b395' }}>
-                // {lesson.title} — reading {itemIndex + 1} of {items.length}
+                // {lesson.title} {maxLevels > 1 ? `· Level ${currentLevelNumber}` : ''} — item {itemIndex + 1} of {items.length}
               </p>
               <h1 className="text-3xl font-black tracking-tight leading-tight mb-5">{item.title}</h1>
-              <article
-                className="prose prose-base max-w-none prose-headings:font-black prose-headings:tracking-tight prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900"
-                dangerouslySetInnerHTML={{ __html: item.content || '' }}
-              />
+              <article className="prose prose-base max-w-none prose-headings:font-black prose-headings:tracking-tight prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900"
+                dangerouslySetInnerHTML={{ __html: item.content || '' }} />
             </div>
           </div>
           <div className="border-t-[3px] border-gray-900 px-5 py-3 flex justify-end flex-shrink-0" style={{ background: '#b4f1e7' }}>
@@ -357,7 +377,7 @@ export default function LessonPage() {
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl w-full mx-auto px-5 py-5">
               <p className="text-xs font-mono tracking-widest uppercase mb-2" style={{ color: '#00b395' }}>
-                // {isPracticeMode ? 'Practice' : lesson.title} — Question {itemIndex + 1} of {items.length}
+                // {isPracticeMode ? 'Practice' : lesson.title} {!isPracticeMode && maxLevels > 1 ? `· Level ${currentLevelNumber}` : ''} — Q {itemIndex + 1} of {items.length}
               </p>
               <div className="bg-white border-l-4 px-4 py-3 mb-4 rounded-r-xl text-gray-800 leading-relaxed text-sm" style={{ borderColor: '#00b395' }}>
                 {item.stem}
