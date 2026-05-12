@@ -116,28 +116,25 @@ export default function DashboardPage() {
               0
             ) || 0
 
-            // Gray tones for history (gov), red tones for calc
-            const bgClass =
-              course.tone === 'gov'
-                ? 'bg-gradient-to-br from-gray-100 to-gray-200'
-                : course.tone === 'calc'
-                ? 'bg-gradient-to-br from-red-100 to-rose-200'
-                : 'bg-gray-100'
-
-            const iconBgClass =
-              course.tone === 'gov'
-                ? 'bg-gray-700 text-white'
-                : course.tone === 'calc'
-                ? 'bg-red-500 text-white'
-                : 'bg-gray-200'
+            // Resolve tone: support legacy keyword tokens and new hex colors
+            const toneColor = (() => {
+              if (/^#[0-9a-fA-F]{6}$/.test(course.tone)) return course.tone
+              if (course.tone === 'gov') return '#6b7280'
+              if (course.tone === 'calc') return '#ef4444'
+              return '#6b7280'
+            })()
+            // Lighten the tone color for card background using opacity
+            const cardBgStyle = { background: `${toneColor}18` } // ~10% opacity tint
+            const iconStyle = { background: toneColor, color: '#fff' }
 
             return (
               <Link
                 key={course.id}
                 href={`/courses/${course.id}`}
-                className={`${bgClass} border-[3px] border-gray-900 rounded-2xl p-6 shadow-[6px_6px_0_#1a1d29] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0_#1a1d29] transition-all block`}
+                className="border-[3px] border-gray-900 rounded-2xl p-6 shadow-[6px_6px_0_#1a1d29] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0_#1a1d29] transition-all block"
+                style={cardBgStyle}
               >
-                <div className={`${iconBgClass} w-16 h-16 border-[2.5px] border-gray-900 rounded-xl flex items-center justify-center text-2xl font-black mb-4 shadow-[2px_2px_0_#1a1d29]`}>
+                <div className="w-16 h-16 border-[2.5px] border-gray-900 rounded-xl flex items-center justify-center text-2xl font-black mb-4 shadow-[2px_2px_0_#1a1d29]" style={iconStyle}>
                   {course.icon}
                 </div>
                 <h2 className="text-2xl font-black tracking-tight leading-tight mb-1">

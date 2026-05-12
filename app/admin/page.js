@@ -615,7 +615,36 @@ function CourseEditor({ course, onUpdate }) {
       <Field label="Short title"><input value={draft.short_title || ''} onChange={e => setDraft({ ...draft, short_title: e.target.value })} onBlur={() => commit('short_title')} className="w-full p-2 border-2 border-gray-900 rounded-lg bg-white" /></Field>
       <Field label="Description" full><textarea value={draft.description || ''} onChange={e => setDraft({ ...draft, description: e.target.value })} onBlur={() => commit('description')} rows={2} className="w-full p-2 border-2 border-gray-900 rounded-lg bg-white" /></Field>
       <Field label="Icon"><input value={draft.icon || ''} onChange={e => setDraft({ ...draft, icon: e.target.value })} onBlur={() => commit('icon')} maxLength={3} className="w-full p-2 border-2 border-gray-900 rounded-lg bg-white" /></Field>
-      <Field label="Tone"><select value={draft.tone || 'default'} onChange={e => { setDraft({ ...draft, tone: e.target.value }); onUpdate(course.id, 'tone', e.target.value) }} className="w-full p-2 border-2 border-gray-900 rounded-lg bg-white"><option value="default">Default</option><option value="gov">Gray</option><option value="calc">Red</option></select></Field>
+      <Field label="Color">
+  <div className="flex items-center gap-2">
+    <input
+      type="color"
+      value={/^#[0-9a-fA-F]{6}$/.test(draft.tone) ? draft.tone : '#6b7280'}
+      onChange={e => { setDraft({ ...draft, tone: e.target.value }); onUpdate(course.id, 'tone', e.target.value) }}
+      className="w-10 h-10 rounded-lg border-2 border-gray-900 cursor-pointer p-0.5 bg-white"
+    />
+    <input
+      type="text"
+      value={/^#[0-9a-fA-F]{6}$/.test(draft.tone) ? draft.tone : '#6b7280'}
+      onChange={e => {
+        const val = e.target.value
+        setDraft({ ...draft, tone: val })
+        if (/^#[0-9a-fA-F]{6}$/.test(val)) onUpdate(course.id, 'tone', val)
+      }}
+      onBlur={() => {
+        if (!/^#[0-9a-fA-F]{6}$/.test(draft.tone)) {
+          const fallback = '#6b7280'
+          setDraft({ ...draft, tone: fallback })
+          onUpdate(course.id, 'tone', fallback)
+        }
+      }}
+      maxLength={7}
+      placeholder="#6b7280"
+      className="flex-1 p-2 border-2 border-gray-900 rounded-lg bg-white font-mono text-sm"
+    />
+    <div className="w-8 h-8 rounded-lg border-2 border-gray-900 flex-shrink-0" style={{ background: /^#[0-9a-fA-F]{6}$/.test(draft.tone) ? draft.tone : '#6b7280' }} />
+  </div>
+</Field>
     </div>
   )
 }
