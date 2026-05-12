@@ -189,7 +189,7 @@ export default function CoursePage() {
                   }
 
                   // Ring segments
-                  const ringRadius = 52
+                  const ringRadius = 54
                   const ringCircumference = 2 * Math.PI * ringRadius
                   const segmentGap = maxLevels > 1 ? 6 : 0
                   const totalGap = segmentGap * maxLevels
@@ -205,9 +205,14 @@ export default function CoursePage() {
                         {/* Ring segments SVG */}
                         {maxLevels > 0 && (
                           <svg
-                            width="116" height="116"
-                            className="absolute -top-3 -left-3 -rotate-90"
-                            style={{ pointerEvents: 'none' }}
+                            width="120" height="120"
+                            className="absolute -rotate-90"
+                            style={{
+                              pointerEvents: 'none',
+                              top: '50%',
+                              left: '50%',
+                              transform: 'translate(-50%, -50%) rotate(-90deg)',
+                            }}
                           >
                             {Array.from({ length: maxLevels }).map((_, segIdx) => {
                               const segOffset = segIdx * (segmentLength + segmentGap)
@@ -215,7 +220,7 @@ export default function CoursePage() {
                               return (
                                 <circle
                                   key={segIdx}
-                                  cx="58" cy="58" r={ringRadius}
+                                  cx="60" cy="60" r={ringRadius}
                                   fill="none"
                                   stroke={isFilled ? '#fbbf24' : 'rgba(0,0,0,0.1)'}
                                   strokeWidth="5"
