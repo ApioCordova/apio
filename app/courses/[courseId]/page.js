@@ -244,7 +244,7 @@ export default function CoursePage() {
                         </button>
 
                         {/* Lesson title + level indicator */}
-                        <div className="absolute left-1/2 -translate-x-1/2 -bottom-10 text-center">
+                        <div className="absolute left-1/2 -translate-x-1/2 -bottom-11 text-center">
                           <p className="text-xs font-bold uppercase tracking-wide text-gray-700 whitespace-nowrap">
                             {lesson.title}
                           </p>
