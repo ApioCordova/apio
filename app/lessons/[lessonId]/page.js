@@ -247,7 +247,7 @@ export default function LessonPage() {
 
           <p className="text-xs font-mono tracking-widest uppercase font-bold text-gray-700 mb-3">How many today?</p>
           <div className="grid grid-cols-2 gap-2">
-            {[5, 10, 20].map(size => (
+            {[5, 10, 15].map(size => (
               <button key={size} onClick={() => startPracticeSession(size)} disabled={size > remaining && remaining < total}
                 className="p-4 bg-white border-[2.5px] border-gray-900 rounded-xl font-black shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all text-center disabled:opacity-40">
                 <p className="text-3xl mb-0.5">{Math.min(size, remaining)}</p>

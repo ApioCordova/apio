@@ -161,11 +161,11 @@ export default function DashboardPage() {
         </div>
 
         <div className="mt-12 p-4 bg-white border-2 border-dashed border-gray-300 rounded-xl text-xs font-mono text-gray-500">
-          <span style={{ color: '#00b395' }}>Last update: 1.01. Fixed dashboard UI, added AP Cybersecurity and AP Business, increased capacity, and fixed mistakes.</span>
+          <span style={{ color: '#00b395' }}>Last update: 1.02. Fixed question pooling, added difficulty to questions, and added more flexibility to readings.</span>
           <br />
           logged in as <strong>{user?.email}</strong> · role: <strong>{profile?.role || 'student'}</strong> · support: demiancordova@cordovaibe.com
         </div>
-        <p className="text-xs text-gray-400 font-mono mt-4">v1.01</p>
+        <p className="text-xs text-gray-400 font-mono mt-4">v1.02</p>
       </div>
     </div>
   )

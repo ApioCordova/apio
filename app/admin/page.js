@@ -98,7 +98,7 @@ export default function AdminContentPage() {
 
   async function saveAndCloseQuestion() {
     const { error } = await supabase.from('questions').update({
-      stem: editDraft.stem, choices: editDraft.choices, answer: editDraft.answer, explanation: editDraft.explanation,
+      stem: editDraft.stem, choices: editDraft.choices, answer: editDraft.answer, explanation: editDraft.explanation, difficulty: editDraft.difficulty || null,
     }).eq('id', editDraft.id)
     if (error) { showToast('Save failed: ' + error.message); return }
     showToast('✓ Question saved'); closeEditor(); await loadItems(selectedLessonId)
@@ -239,7 +239,7 @@ export default function AdminContentPage() {
       choices: ['Option A', 'Option B', 'Option C', 'Option D'],
       answer: 0, explanation: 'Why this answer is correct.',
       sort_order: sortOrder, status: 'draft', pool, created_by: currentUser?.id,
-      level_id: levelId,
+      level_id: levelId, difficulty: null,
     }).select().single()
     if (error) { showToast('Failed: ' + error.message); return }
     showToast(`Draft ${pool} question created`); await loadItems(selectedLessonId)
@@ -350,6 +350,33 @@ export default function AdminContentPage() {
                     {editDraft.choices.length < 8 && (
                       <button type="button" onClick={() => setEditDraft({ ...editDraft, choices: [...editDraft.choices, `Option ${String.fromCharCode(65 + editDraft.choices.length)}`] })} className="mt-2 px-4 py-2 bg-white border-2 border-dashed border-gray-400 rounded-lg text-sm font-bold">+ Add choice</button>
                     )}
+                  </div>
+                  <div className="mt-6">
+                    <Field label="Difficulty">
+                      <div className="flex gap-2 flex-wrap">
+                        {[
+                          { value: null, label: 'Not set', color: '#9ca3af' },
+                          { value: 'easy', label: 'Easy', color: '#22c55e' },
+                          { value: 'medium', label: 'Medium', color: '#eab308' },
+                          { value: 'difficult', label: 'Difficult', color: '#f97316' },
+                          { value: 'very_difficult', label: 'Very Difficult', color: '#ef4444' },
+                        ].map((opt) => (
+                          <button
+                            key={opt.label}
+                            type="button"
+                            onClick={() => setEditDraft({ ...editDraft, difficulty: opt.value })}
+                            className={`px-4 py-2 border-2 rounded-xl text-sm font-bold transition-all ${
+                              editDraft.difficulty === opt.value
+                                ? 'border-gray-900 shadow-[3px_3px_0_#1a1d29] text-white'
+                                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-500'
+                            }`}
+                            style={editDraft.difficulty === opt.value ? { background: opt.color } : {}}
+                          >
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
                   </div>
                   <div className="mt-6">
                     <Field label="Explanation">
@@ -689,6 +716,11 @@ function ItemCard({ index, item, isFirst, isLast, onEdit, onDelete, onStatusChan
             <p className="text-xs font-mono tracking-widest uppercase font-bold flex items-center gap-2" style={{ color: '#00b395' }}>
               📝 Question — item {index + 1} <StatusDot status={item.status} />
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900" style={{ background: item.pool === 'practice' ? '#fbbf24' : '#00b395', color: item.pool === 'practice' ? '#1a1d29' : 'white' }}>{item.pool === 'practice' ? 'PRACTICE' : 'LESSON'}</span>
+              {item.difficulty && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900 text-white" style={{ background: item.difficulty === 'easy' ? '#22c55e' : item.difficulty === 'medium' ? '#eab308' : item.difficulty === 'difficult' ? '#f97316' : '#ef4444' }}>
+                  {item.difficulty === 'very_difficult' ? 'VERY HARD' : item.difficulty.toUpperCase()}
+                </span>
+              )}
             </p>
             <div className="flex gap-1.5 flex-wrap items-center">
               <button onClick={onTogglePool} className="px-3 py-1 bg-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">↔ {item.pool === 'practice' ? 'To lesson' : 'To practice'}</button>
