@@ -376,9 +376,21 @@ export default function LessonPage() {
         <>
           <div className="flex-1 overflow-y-auto">
             <div className="max-w-2xl w-full mx-auto px-5 py-5">
-              <p className="text-xs font-mono tracking-widest uppercase mb-2" style={{ color: '#00b395' }}>
-                // {isPracticeMode ? 'Practice' : lesson.title} {!isPracticeMode && maxLevels > 1 ? `· Level ${currentLevelNumber}` : ''} — Q {itemIndex + 1} of {items.length}
-              </p>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <p className="text-xs font-mono tracking-widest uppercase" style={{ color: '#00b395' }}>
+                  // {isPracticeMode ? 'Practice' : lesson.title} {!isPracticeMode && maxLevels > 1 ? `· Level ${currentLevelNumber}` : ''} — Q {itemIndex + 1} of {items.length}
+                </p>
+                {item.difficulty && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border-2 border-gray-900 text-white" style={{
+                    background: item.difficulty === 'easy' ? '#22c55e' : item.difficulty === 'medium' ? '#eab308' : item.difficulty === 'difficult' ? '#f97316' : '#ef4444'
+                  }}>
+                    {item.difficulty === 'very_difficult' ? 'VERY HARD' : item.difficulty.toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className="bg-white border-l-4 px-4 py-3 mb-4 rounded-r-xl text-gray-800 leading-relaxed text-sm" style={{ borderColor: '#00b395' }}>
+                {item.stem}
+              </div>
               <div className="bg-white border-l-4 px-4 py-3 mb-4 rounded-r-xl text-gray-800 leading-relaxed text-sm" style={{ borderColor: '#00b395' }}>
                 {item.stem}
               </div>
