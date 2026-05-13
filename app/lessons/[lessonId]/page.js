@@ -391,9 +391,6 @@ export default function LessonPage() {
               <div className="bg-white border-l-4 px-4 py-3 mb-4 rounded-r-xl text-gray-800 leading-relaxed text-sm" style={{ borderColor: '#00b395' }}>
                 {item.stem}
               </div>
-              <div className="bg-white border-l-4 px-4 py-3 mb-4 rounded-r-xl text-gray-800 leading-relaxed text-sm" style={{ borderColor: '#00b395' }}>
-                {item.stem}
-              </div>
               <div className="flex flex-col gap-2 mb-4">
                 {item.choices.map((c, i) => {
                   let cls = 'bg-white border-[2px] border-gray-900 rounded-xl px-4 py-3 shadow-[3px_3px_0_#1a1d29] text-left flex items-center gap-3 text-sm font-medium transition-all'
