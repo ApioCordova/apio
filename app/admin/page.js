@@ -20,6 +20,8 @@ export default function AdminContentPage() {
 
   const [editingItem, setEditingItem] = useState(null)
   const [editDraft, setEditDraft] = useState(null)
+  const [dragIndex, setDragIndex] = useState(null)
+  const [dragOverIndex, setDragOverIndex] = useState(null)
 
   const canPublishDirectly = currentRole === 'admin' || currentRole === 'editor'
   const isReviewer = currentRole === 'reviewer'
@@ -154,18 +156,37 @@ export default function AdminContentPage() {
     await supabase.from('courses').update({ [field]: value }).eq('id', courseId)
     setCourses((cs) => cs.map((c) => (c.id === courseId ? { ...c, [field]: value } : c)))
   }
-  async function moveCourse(course, direction) {
-  const idx = courses.findIndex(c => c.id === course.id)
-  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
-  if (swapIdx < 0 || swapIdx >= courses.length) return
-  const reordered = [...courses]
-  ;[reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]]
-  await Promise.all(
-    reordered.map((c, i) =>
-      supabase.from('courses').update({ sort_order: i + 1 }).eq('id', c.id)
+  async function persistCourseOrder(ordered) {
+    setCourses(ordered) // optimistic — UI updates instantly
+    await Promise.all(
+      ordered.map((c, i) =>
+        supabase.from('courses').update({ sort_order: i + 1 }).eq('id', c.id)
+      )
     )
-  )
-  await loadCourses()
+    await loadCourses()
+  }
+  function handleCourseDragStart(e, index) {
+    setDragIndex(index)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  function handleCourseDragOver(e, index) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (index !== dragOverIndex) setDragOverIndex(index)
+  }
+  function handleCourseDrop(e, index) {
+    e.preventDefault()
+    if (dragIndex === null || dragIndex === index) { setDragIndex(null); setDragOverIndex(null); return }
+    const reordered = [...courses]
+    const [moved] = reordered.splice(dragIndex, 1)
+    reordered.splice(index, 0, moved)
+    setDragIndex(null)
+    setDragOverIndex(null)
+    persistCourseOrder(reordered)
+  }
+  function handleCourseDragEnd() {
+    setDragIndex(null)
+    setDragOverIndex(null)
   }
   async function addCourse() {
     const id = `course-${Date.now()}`
@@ -443,7 +464,18 @@ export default function AdminContentPage() {
           <p className="text-xs font-mono tracking-widest text-gray-600 uppercase px-2 mb-2">Courses</p>
           {courses.map((course, ci) => (
             <div key={course.id} className="mb-3">
-              <div className="flex items-center gap-1">
+              <div
+                onDragOver={(e) => handleCourseDragOver(e, ci)}
+                onDrop={(e) => handleCourseDrop(e, ci)}
+                className={`flex items-center gap-1 rounded-lg ${dragOverIndex === ci && dragIndex !== ci ? 'ring-2 ring-[#00b395]' : ''} ${dragIndex === ci ? 'opacity-40' : ''}`}
+              >
+                <span
+                  draggable
+                  onDragStart={(e) => handleCourseDragStart(e, ci)}
+                  onDragEnd={handleCourseDragEnd}
+                  className="cursor-grab active:cursor-grabbing px-1 text-gray-400 hover:text-gray-700 select-none"
+                  title="Drag to reorder"
+                >⠿</span>
                 <button onClick={() => { setSelectedCourseId(course.id); setSelectedLessonId(null); setSelectedLevelId(null) }} className={`flex-1 text-left px-2 py-2 rounded-lg font-bold text-sm flex items-center gap-2 ${selectedCourseId === course.id ? 'bg-gray-900 text-white' : 'hover:bg-gray-100'}`}>
                   <span>{course.icon}</span><span className="flex-1 truncate">{course.short_title}</span><StatusDot status={course.status} />
                 </button>
