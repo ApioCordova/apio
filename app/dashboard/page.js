@@ -10,7 +10,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
-  const [courses, setCourses] = useState([])
+  const [sections, setSections] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -29,21 +29,14 @@ export default function DashboardPage() {
         .single()
       setProfile(profileData)
 
-      const { data: coursesData } = await supabase
-  .from('courses')
-  .select(`
-    *,
-    units!inner (
-      id,
-      status,
-      lessons!inner (id, status)
-    )
-  `)
-  .eq('status', 'published')
-  .eq('units.status', 'published')
-  .eq('units.lessons.status', 'published')
-  .order('sort_order')
-      setCourses(coursesData || [])
+      // Top-level sections students see on the home screen.
+      // We pull each section's courses just to show a count badge.
+      const { data: sectionsData } = await supabase
+        .from('sections')
+        .select('*, courses:courses(id, status)')
+        .eq('status', 'published')
+        .order('sort_order')
+      setSections(sectionsData || [])
 
       setLoading(false)
     }
@@ -58,7 +51,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#f6fbf8' }}>
-        <p className="text-gray-600 font-mono text-sm">Loading your courses...</p>
+        <p className="text-gray-600 font-mono text-sm">Loading...</p>
       </div>
     )
   }
@@ -107,65 +100,49 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Course grid */}
+        {/* Section grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {courses.map((course) => {
-            const unitCount = course.units?.length || 0
-            const lessonCount = course.units?.reduce(
-              (sum, u) => sum + (u.lessons?.length || 0),
-              0
-            ) || 0
+          {sections.map((section) => {
+            const courseCount = (section.courses || []).filter((c) => c.status === 'published').length
 
-            // Resolve tone: support legacy keyword tokens and new hex colors
-            const toneColor = (() => {
-              if (/^#[0-9a-fA-F]{6}$/.test(course.tone)) return course.tone
-              if (course.tone === 'gov') return '#6b7280'
-              if (course.tone === 'calc') return '#ef4444'
-              return '#6b7280'
-            })()
-            // Lighten the tone color for card background using opacity
-            const cardBgStyle = { background: `${toneColor}18` } // ~10% opacity tint
+            // Resolve tone: hex color, fall back to teal
+            const toneColor = /^#[0-9a-fA-F]{6}$/.test(section.tone) ? section.tone : '#00b395'
+            const cardBgStyle = { background: `${toneColor}18` } // ~10% tint
             const iconStyle = { background: toneColor, color: '#fff' }
 
             return (
               <Link
-                key={course.id}
-                href={`/courses/${course.id}`}
+                key={section.id}
+                href={`/sections/${section.id}`}
                 className="border-[3px] border-gray-900 rounded-2xl p-6 shadow-[6px_6px_0_#1a1d29] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[8px_8px_0_#1a1d29] transition-all block"
                 style={cardBgStyle}
               >
                 <div className="w-16 h-16 border-[2.5px] border-gray-900 rounded-xl flex items-center justify-center text-2xl font-black mb-4 shadow-[2px_2px_0_#1a1d29]" style={iconStyle}>
-                  {course.icon}
+                  {section.icon}
                 </div>
                 <h2 className="text-2xl font-black tracking-tight leading-tight mb-1">
-                  {course.title}
+                  {section.name}
                 </h2>
                 <p className="text-sm text-gray-700 mb-4">
-                  {course.description}
+                  {section.description}
                 </p>
                 <div className="flex gap-3 text-xs font-mono uppercase tracking-widest text-gray-700">
-                  <span>◆ {unitCount} units</span>
-                  <span>◆ {lessonCount} lessons</span>
+                  <span>◆ {courseCount} course{courseCount === 1 ? '' : 's'}</span>
                 </div>
               </Link>
             )
           })}
 
-          <div className="bg-white border-[3px] border-dashed border-gray-400 rounded-2xl p-6 opacity-60 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 bg-gray-100 border-2 border-gray-400 rounded-xl flex items-center justify-center text-2xl font-black mb-3">
-              +
+          {sections.length === 0 && (
+            <div className="bg-white border-[3px] border-dashed border-gray-400 rounded-2xl p-6 opacity-60 flex flex-col items-center justify-center text-center md:col-span-2">
+              <div className="w-16 h-16 bg-gray-100 border-2 border-gray-400 rounded-xl flex items-center justify-center text-2xl font-black mb-3">
+                +
+              </div>
+              <p className="font-bold text-gray-700">No sections yet</p>
+              <p className="text-xs text-gray-500 mt-1">An admin can add sections from the admin panel.</p>
             </div>
-            <p className="font-bold text-gray-700">More AP courses</p>
-            <p className="text-xs text-gray-500 mt-1">Calculus BC, U.S. Government, and Human Geography coming soon</p>
-          </div>
+          )}
         </div>
-
-        <div className="mt-12 p-4 bg-white border-2 border-dashed border-gray-300 rounded-xl text-xs font-mono text-gray-500">
-          <span style={{ color: '#00b395' }}>Last update: 1.02. Fixed question pooling, added difficulty to questions, and added more flexibility to readings.</span>
-          <br />
-          logged in as <strong>{user?.email}</strong> · role: <strong>{profile?.role || 'student'}</strong> · support: demiancordova@cordovaibe.com
-        </div>
-        <p className="text-xs text-gray-400 font-mono mt-4">v1.03</p>
       </div>
     </div>
   )

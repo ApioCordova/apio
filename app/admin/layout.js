@@ -71,11 +71,12 @@ export default function AdminLayout({ children }) {
   }
 
   const navItems = [
-    { href: '/admin', label: 'Content', icon: '📚' },
-    { href: '/admin/review', label: 'Pending Review', icon: '📋' },
-    { href: '/admin/contributors', label: 'Contributors', icon: '👥' },
-    { href: '/admin/analytics', label: 'Analytics', icon: '📊' },
-  ]
+  { href: '/admin/sections', label: 'Sections', icon: '🗂' },   // ← add this line
+  { href: '/admin', label: 'Content', icon: '📚' },
+  { href: '/admin/review', label: 'Pending Review', icon: '📋' },
+  { href: '/admin/contributors', label: 'Contributors', icon: '👥' },
+  { href: '/admin/analytics', label: 'Analytics', icon: '📊' },
+]
 
   return (
     <div className="min-h-screen" style={{ background: '#f6fbf8' }}>
@@ -113,7 +114,7 @@ export default function AdminLayout({ children }) {
       {/* Body: sidebar + content */}
       <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 md:grid-cols-[240px_1fr] gap-5">
         <aside className="bg-white border-[3px] border-gray-900 rounded-2xl p-4 shadow-[6px_6px_0_#1a1d29] h-fit md:sticky md:top-24">
-          <p className="text-xs font-mono tracking-widest text-gray-600 uppercase px-2 mb-2">Sections</p>
+          <p className="text-xs font-mono tracking-widest text-gray-600 uppercase px-2 mb-2">Manage</p>
           <nav className="flex flex-col gap-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href
