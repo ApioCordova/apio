@@ -165,7 +165,7 @@ export default function DashboardPage() {
           <br />
           logged in as <strong>{user?.email}</strong> · role: <strong>{profile?.role || 'student'}</strong> · support: demiancordova@cordovaibe.com
         </div>
-        <p className="text-xs text-gray-400 font-mono mt-4">v1.02</p>
+        <p className="text-xs text-gray-400 font-mono mt-4">v1.03</p>
       </div>
     </div>
   )

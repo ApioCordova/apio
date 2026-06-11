@@ -154,6 +154,19 @@ export default function AdminContentPage() {
     await supabase.from('courses').update({ [field]: value }).eq('id', courseId)
     setCourses((cs) => cs.map((c) => (c.id === courseId ? { ...c, [field]: value } : c)))
   }
+  async function moveCourse(course, direction) {
+  const idx = courses.findIndex(c => c.id === course.id)
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= courses.length) return
+  const reordered = [...courses]
+  ;[reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]]
+  await Promise.all(
+    reordered.map((c, i) =>
+      supabase.from('courses').update({ sort_order: i + 1 }).eq('id', c.id)
+    )
+  )
+  await loadCourses()
+  }
   async function addCourse() {
     const id = `course-${Date.now()}`
     const { error } = await supabase.from('courses').insert({ id, title: 'New AP Course', short_title: 'New', description: 'Click to edit.', icon: '★', tone: 'default', sort_order: courses.length + 1, status: 'draft' })
@@ -165,6 +178,20 @@ export default function AdminContentPage() {
     if (prompt(`Type the course title to confirm:\n\n${courseTitle}`) !== courseTitle) { showToast('Not deleted'); return }
     await supabase.from('courses').delete().eq('id', courseId)
     showToast('Course deleted'); setSelectedLessonId(null); setSelectedCourseId(null); await loadCourses()
+  }
+  async function moveCourse(course, direction) {
+  const idx = courses.findIndex(c => c.id === course.id)
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= courses.length) return
+  // Reorder locally, then re-stamp ALL courses 1..n so the order is always clean
+  const reordered = [...courses]
+  ;[reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]]
+  await Promise.all(
+    reordered.map((c, i) =>
+      supabase.from('courses').update({ sort_order: i + 1 }).eq('id', c.id)
+    )
+  )
+  await loadCourses()
   }
 
   // ============ UNIT ============
@@ -414,7 +441,7 @@ export default function AdminContentPage() {
         {/* Sidebar */}
         <aside className="border-2 border-gray-900 rounded-xl p-3 max-h-[80vh] overflow-y-auto" style={{ background: '#f6fbf8' }}>
           <p className="text-xs font-mono tracking-widest text-gray-600 uppercase px-2 mb-2">Courses</p>
-          {courses.map((course) => (
+          {courses.map((course, ci) => (
             <div key={course.id} className="mb-3">
               <div className="flex items-center gap-1">
                 <button onClick={() => { setSelectedCourseId(course.id); setSelectedLessonId(null); setSelectedLevelId(null) }} className={`flex-1 text-left px-2 py-2 rounded-lg font-bold text-sm flex items-center gap-2 ${selectedCourseId === course.id ? 'bg-gray-900 text-white' : 'hover:bg-gray-100'}`}>
