@@ -170,8 +170,8 @@ export default function CoursePage() {
                   const prevLesson = unit.lessons[idx - 1]
                   const prevMaxLevels = prevLesson ? (levelCounts[prevLesson.id] || 1) : 0
                   const prevCompleted = prevLesson ? (progressMap[prevLesson.id]?.levels_completed || 0) : maxLevels
-                  const isLocked = !isFullyCompleted && !isCurrent && !hasStarted && prevLesson && prevCompleted < prevMaxLevels
-
+                  const requiresSequential = course?.linear_progression !== false
+                  const isLocked = requiresSequential && !isFullyCompleted && !isCurrent && !hasStarted && prevLesson && prevCompleted < prevMaxLevels
                   const offsets = [0, 40, 60, 40, -20]
                   const offset = offsets[idx % 5]
 

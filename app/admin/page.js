@@ -731,6 +731,34 @@ function CourseEditor({ course, onUpdate }) {
     <div className="w-8 h-8 rounded-lg border-2 border-gray-900 flex-shrink-0" style={{ background: /^#[0-9a-fA-F]{6}$/.test(draft.tone) ? draft.tone : '#6b7280' }} />
   </div>
 </Field>
+<Field label="Lesson progression" full>
+  <div className="flex flex-col sm:flex-row gap-2">
+    <button
+      type="button"
+      onClick={() => { setDraft({ ...draft, linear_progression: true }); onUpdate(course.id, 'linear_progression', true) }}
+      className={`flex-1 px-4 py-2 border-2 rounded-lg font-bold text-sm text-left transition-all ${
+        draft.linear_progression !== false
+          ? 'border-gray-900 text-white shadow-[3px_3px_0_#1a1d29]'
+          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-500'
+      }`}
+      style={draft.linear_progression !== false ? { background: '#00b395' } : {}}
+    >
+      🔒 Sequential — finish a lesson to unlock the next
+    </button>
+    <button
+      type="button"
+      onClick={() => { setDraft({ ...draft, linear_progression: false }); onUpdate(course.id, 'linear_progression', false) }}
+      className={`flex-1 px-4 py-2 border-2 rounded-lg font-bold text-sm text-left transition-all ${
+        draft.linear_progression === false
+          ? 'border-gray-900 text-white shadow-[3px_3px_0_#1a1d29]'
+          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-500'
+      }`}
+      style={draft.linear_progression === false ? { background: '#00b395' } : {}}
+    >
+      🔓 Free — students pick any lesson, any order
+    </button>
+  </div>
+</Field>
     </div>
   )
 }
