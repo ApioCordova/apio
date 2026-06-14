@@ -9,9 +9,11 @@ import { supabase } from '@/lib/supabase'
 export default function LoginPage() {
   const router = useRouter()
   const [mode, setMode] = useState('signin')
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('') // sign in: email OR username
+  const [email, setEmail] = useState('')           // sign up: email
+  const [username, setUsername] = useState('')      // sign up: username (required)
+  const [name, setName] = useState('')              // sign up: display name (optional)
   const [password, setPassword] = useState('')
-  const [name, setName] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState(null)
 
@@ -21,11 +23,39 @@ export default function LoginPage() {
     setMessage(null)
 
     if (mode === 'signup') {
-      const { data, error } = await supabase.auth.signUp({
+      const cleanUsername = username.trim().toLowerCase()
+      const cleanName = name.trim()
+
+      // Username rules match the profile editor.
+      if (!/^[a-z0-9_]{3,20}$/.test(cleanUsername)) {
+        setMessage({
+          type: 'error',
+          text: 'Username must be 3–20 characters: lowercase letters, numbers, or underscores.',
+        })
+        setLoading(false)
+        return
+      }
+
+      // Make sure the username is free before creating the account.
+      const { data: isFree, error: availErr } = await supabase.rpc('username_available', {
+        name: cleanUsername,
+      })
+      if (availErr) {
+        setMessage({ type: 'error', text: 'Could not check username availability. Please try again.' })
+        setLoading(false)
+        return
+      }
+      if (!isFree) {
+        setMessage({ type: 'error', text: 'That username is already taken.' })
+        setLoading(false)
+        return
+      }
+
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { full_name: name },
+          data: { full_name: cleanName || null, username: cleanUsername },
         },
       })
       if (error) {
@@ -37,8 +67,25 @@ export default function LoginPage() {
         })
       }
     } else {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+      // Sign in: the field can be an email or a username.
+      const id = identifier.trim()
+      let loginEmail = id
+
+      if (!id.includes('@')) {
+        // It's a username — resolve it to the account email.
+        const { data: resolved, error: lookupErr } = await supabase.rpc('email_for_username', {
+          name: id,
+        })
+        if (lookupErr || !resolved) {
+          setMessage({ type: 'error', text: 'No account found with that username.' })
+          setLoading(false)
+          return
+        }
+        loginEmail = resolved
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
         password,
       })
       if (error) {
@@ -101,26 +148,54 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleEmailAuth}>
-          {mode === 'signup' && (
+          {mode === 'signup' ? (
+            <>
+              <div
+                className="flex items-center mb-1 border-[2.5px] border-gray-900 rounded-xl overflow-hidden"
+                style={{ background: '#f6fbf8' }}
+              >
+                <span className="px-3 text-gray-500 font-mono select-none">@</span>
+                <input
+                  type="text"
+                  placeholder="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  className="flex-1 p-3 bg-transparent font-medium focus:outline-none"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mb-3 ml-1">
+                3–20 characters · letters, numbers, underscores.
+              </p>
+              <input
+                type="text"
+                placeholder="Your name (optional)"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full p-3 mb-3 border-[2.5px] border-gray-900 rounded-xl font-medium focus:outline-none focus:bg-white"
+                style={{ background: '#f6fbf8' }}
+              />
+              <input
+                type="email"
+                placeholder="you@school.edu"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full p-3 mb-3 border-[2.5px] border-gray-900 rounded-xl font-medium focus:outline-none focus:bg-white"
+                style={{ background: '#f6fbf8' }}
+              />
+            </>
+          ) : (
             <input
               type="text"
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              placeholder="Email or username"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               required
               className="w-full p-3 mb-3 border-[2.5px] border-gray-900 rounded-xl font-medium focus:outline-none focus:bg-white"
               style={{ background: '#f6fbf8' }}
             />
           )}
-          <input
-            type="email"
-            placeholder="you@school.edu"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full p-3 mb-3 border-[2.5px] border-gray-900 rounded-xl font-medium focus:outline-none focus:bg-white"
-            style={{ background: '#f6fbf8' }}
-          />
           <input
             type="password"
             placeholder="Password (8+ characters)"
