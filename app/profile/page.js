@@ -24,6 +24,12 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState(null) // { type: 'error' | 'success', text }
 
+  // Password / sign-in state
+  const [showPwForm, setShowPwForm] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [savingPassword, setSavingPassword] = useState(false)
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser()
@@ -86,7 +92,7 @@ export default function ProfilePage() {
 
     if (!cleanName) { flash('error', 'Name cannot be empty.'); return }
     if (cleanUsername && !/^[a-z0-9_]{3,20}$/.test(cleanUsername)) {
-      flash('error', 'Username must be 3\u201320 characters: letters, numbers, or underscores.')
+      flash('error', 'Username must be 3–20 characters: letters, numbers, or underscores.')
       return
     }
 
@@ -119,6 +125,31 @@ export default function ProfilePage() {
     setMessage(null)
   }
 
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+
+  // Works for both cases:
+  //  - Email user changing their password
+  //  - Google user creating a password (Supabase sets it on the SAME account,
+  //    so they can afterward sign in with their email + this password)
+  async function handleSavePassword() {
+    if (newPassword.length < 8) { flash('error', 'Password must be at least 8 characters.'); return }
+    if (newPassword !== confirmPassword) { flash('error', 'Passwords do not match.'); return }
+
+    setSavingPassword(true)
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    setSavingPassword(false)
+
+    if (error) { flash('error', 'Could not update password: ' + error.message); return }
+
+    setNewPassword('')
+    setConfirmPassword('')
+    setShowPwForm(false)
+    flash('success', 'Password saved! You can now sign in with your email and this password.')
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#f6fbf8' }}>
@@ -131,6 +162,11 @@ export default function ProfilePage() {
   const initials = (displayName || '?').trim().charAt(0).toUpperCase()
   const shownAvatar = editing ? avatarUrl : profile?.avatar_url
 
+  // Which sign-in methods this account already has.
+  const providers = user?.identities?.map((i) => i.provider) || []
+  const hasEmailLogin = providers.includes('email')
+  const usesGoogle = providers.includes('google')
+
   return (
     <div className="min-h-screen" style={{ background: '#f6fbf8' }}>
       {/* Top bar */}
@@ -139,12 +175,20 @@ export default function ProfilePage() {
           <Image src="/apio-logo.png" alt="Apio" width={32} height={32} className="rounded-lg" />
           <span className="text-xl md:text-2xl font-black tracking-tight">Apio</span>
         </Link>
-        <Link
-          href="/dashboard"
-          className="px-2.5 py-1 bg-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
-        >
-          &larr; Dashboard
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard"
+            className="px-2.5 py-1 bg-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
+          >
+            ← Dashboard
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="px-2.5 py-1 bg-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
+          >
+            Log out
+          </button>
+        </div>
       </div>
 
       <div className="max-w-3xl mx-auto p-6 md:p-8">
@@ -181,7 +225,7 @@ export default function ProfilePage() {
                   className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-gray-900 text-white border-2 border-white flex items-center justify-center text-sm shadow disabled:opacity-50"
                   title="Change photo"
                 >
-                  {uploading ? '\u2026' : '\u270E'}
+                  {uploading ? '…' : '✎'}
                 </button>
               )}
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarPick} className="hidden" />
@@ -214,7 +258,7 @@ export default function ProfilePage() {
                   style={{ background: '#f6fbf8' }}
                 />
               ) : (
-                <p className="font-bold">{profile?.full_name || '\u2014'}</p>
+                <p className="font-bold">{profile?.full_name || '—'}</p>
               )}
             </Field>
 
@@ -230,10 +274,10 @@ export default function ProfilePage() {
                       className="flex-1 p-3 bg-transparent font-medium focus:outline-none"
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">3\u201320 characters \u00b7 letters, numbers, underscores.</p>
+                  <p className="text-xs text-gray-500 mt-1">3–20 characters · letters, numbers, underscores.</p>
                 </div>
               ) : (
-                <p className="font-bold">{profile?.username ? '@' + profile.username : '\u2014'}</p>
+                <p className="font-bold">{profile?.username ? '@' + profile.username : '—'}</p>
               )}
             </Field>
 
@@ -251,7 +295,7 @@ export default function ProfilePage() {
                 className="px-5 py-2.5 text-white border-2 border-gray-900 rounded-xl font-bold shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all disabled:opacity-50"
                 style={{ background: '#00b395' }}
               >
-                {saving ? 'Saving\u2026' : 'Save changes'}
+                {saving ? 'Saving…' : 'Save changes'}
               </button>
               <button
                 onClick={cancelEdit}
@@ -264,12 +308,88 @@ export default function ProfilePage() {
           )}
         </div>
 
+        {/* Password / sign-in */}
+        <div className="bg-white border-[3px] border-gray-900 rounded-2xl p-6 md:p-8 shadow-[6px_6px_0_#1a1d29] mt-6">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0">
+              <h2 className="text-xl font-black tracking-tight">
+                {hasEmailLogin ? 'Password' : 'Create a password'}
+              </h2>
+              <p className="text-sm text-gray-600 mt-1 max-w-md">
+                {hasEmailLogin
+                  ? 'Change the password you use to sign in with your email.'
+                  : 'You signed in with Google. Set a password to also sign in with your email and password.'}
+              </p>
+            </div>
+            {usesGoogle && (
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold border-2 border-gray-900 shrink-0" style={{ background: '#b4f1e7' }}>
+                Google account
+              </span>
+            )}
+          </div>
+
+          {!showPwForm ? (
+            <button
+              onClick={() => setShowPwForm(true)}
+              className="mt-4 px-4 py-2 text-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all"
+              style={{ background: '#00b395' }}
+            >
+              {hasEmailLogin ? 'Change password' : 'Create password'}
+            </button>
+          ) : (
+            <div className="mt-4 space-y-4">
+              <Field label={hasEmailLogin ? 'New password' : 'Password'}>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  className="w-full p-3 border-[2.5px] border-gray-900 rounded-xl font-medium focus:outline-none focus:bg-white"
+                  style={{ background: '#f6fbf8' }}
+                />
+              </Field>
+              <Field label="Confirm password">
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter password"
+                  className="w-full p-3 border-[2.5px] border-gray-900 rounded-xl font-medium focus:outline-none focus:bg-white"
+                  style={{ background: '#f6fbf8' }}
+                />
+              </Field>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSavePassword}
+                  disabled={savingPassword}
+                  className="px-5 py-2.5 text-white border-2 border-gray-900 rounded-xl font-bold shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all disabled:opacity-50"
+                  style={{ background: '#00b395' }}
+                >
+                  {savingPassword ? 'Saving…' : 'Save password'}
+                </button>
+                <button
+                  onClick={() => { setShowPwForm(false); setNewPassword(''); setConfirmPassword('') }}
+                  disabled={savingPassword}
+                  className="px-5 py-2.5 bg-white border-2 border-gray-900 rounded-xl font-bold shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+              {!hasEmailLogin && (
+                <p className="text-xs text-gray-500">
+                  Next time, sign in with <span className="font-bold">{profile?.email || user?.email}</span> and this password.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Courses */}
-        <h2 className="text-xl font-black tracking-tight mt-8 mb-3">Courses you're taking</h2>
+        <h2 className="text-xl font-black tracking-tight mt-8 mb-3">Courses you&apos;re taking</h2>
         {courses.length === 0 ? (
           <div className="bg-white border-[3px] border-gray-900 rounded-2xl p-6 shadow-[4px_4px_0_#1a1d29] text-gray-600">
-            You haven\u2019t started any courses yet.{' '}
-            <Link href="/dashboard" className="font-bold underline" style={{ color: '#00b395' }}>Browse courses \u2192</Link>
+            You haven&apos;t started any courses yet.{' '}
+            <Link href="/dashboard" className="font-bold underline" style={{ color: '#00b395' }}>Browse courses →</Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -284,7 +404,7 @@ export default function ProfilePage() {
                   className="flex items-center gap-3 bg-white border-[3px] border-gray-900 rounded-2xl p-4 shadow-[4px_4px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#1a1d29] transition-all"
                 >
                   <div className="w-11 h-11 rounded-xl border-2 border-gray-900 flex items-center justify-center text-xl shrink-0" style={{ background: color + '33' }}>
-                    {c.icon || '\uD83D\uDCD8'}
+                    {c.icon || '📘'}
                   </div>
                   <div className="min-w-0">
                     <p className="font-black tracking-tight truncate">{c.title}</p>

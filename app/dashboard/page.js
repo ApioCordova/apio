@@ -43,11 +43,6 @@ export default function DashboardPage() {
     loadData()
   }, [router])
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#f6fbf8' }}>
@@ -78,12 +73,6 @@ export default function DashboardPage() {
               Admin
             </Link>
           )}
-          <button
-            onClick={handleLogout}
-            className="px-2.5 py-1 bg-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]"
-          >
-            Log out
-          </button>
           <Link href="/profile" title="Your profile" className="shrink-0">
             {profile?.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
