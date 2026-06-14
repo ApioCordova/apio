@@ -64,7 +64,7 @@ export default function ProfilePage() {
 
   function flash(type, text) {
     setMessage({ type, text })
-    setTimeout(() => setMessage(null), 3000)
+    setTimeout(() => setMessage(null), 3500)
   }
 
   async function handleAvatarPick(e) {
@@ -169,6 +169,17 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#f6fbf8' }}>
+      {/* Toast — pinned to the bottom of the screen so it's always visible,
+          no matter how far down the page you've scrolled. */}
+      {message && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 rounded-full font-bold text-sm text-white border-[2.5px] border-gray-900 shadow-[4px_4px_0_#1a1d29] max-w-[90vw] text-center"
+          style={{ background: message.type === 'error' ? '#ef4444' : '#00b395' }}
+        >
+          {message.type === 'error' ? '⚠ ' : '✓ '}{message.text}
+        </div>
+      )}
+
       {/* Top bar */}
       <div className="border-b-[3px] border-gray-900 px-4 md:px-6 py-3 flex items-center justify-between gap-2" style={{ background: '#b4f1e7' }}>
         <Link href="/dashboard" className="flex items-center gap-2">
@@ -194,16 +205,6 @@ export default function ProfilePage() {
       <div className="max-w-3xl mx-auto p-6 md:p-8">
         <p className="text-xs font-mono tracking-widest uppercase mb-2" style={{ color: '#00b395' }}>// Your profile</p>
         <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-6">Account</h1>
-
-        {message && (
-          <div className={`mb-5 p-3 rounded-xl text-sm border-2 ${
-            message.type === 'error'
-              ? 'bg-red-50 border-red-300 text-red-800'
-              : 'bg-green-50 border-green-300 text-green-800'
-          }`}>
-            {message.text}
-          </div>
-        )}
 
         {/* Profile card */}
         <div className="bg-white border-[3px] border-gray-900 rounded-2xl p-6 md:p-8 shadow-[6px_6px_0_#1a1d29]">
