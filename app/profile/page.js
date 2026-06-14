@@ -84,7 +84,7 @@ export default function ProfilePage() {
     const cleanName = fullName.trim()
     const cleanUsername = username.trim().toLowerCase()
 
-    if (!cleanName) { flash('error', 'Name can\u2019t be empty.'); return }
+    if (!cleanName) { flash('error', 'Name cannot be empty.'); return }
     if (cleanUsername && !/^[a-z0-9_]{3,20}$/.test(cleanUsername)) {
       flash('error', 'Username must be 3\u201320 characters: letters, numbers, or underscores.')
       return
@@ -239,7 +239,7 @@ export default function ProfilePage() {
 
             <Field label="Email">
               <p className="font-bold text-gray-700">{profile?.email || user?.email}</p>
-              <p className="text-xs text-gray-400 mt-1">Email can\u2019t be changed.</p>
+              <p className="text-xs text-gray-400 mt-1">Email cannot be changed.</p>
             </Field>
           </div>
 
@@ -265,7 +265,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Courses */}
-        <h2 className="text-xl font-black tracking-tight mt-8 mb-3">Courses you\u2019re taking</h2>
+        <h2 className="text-xl font-black tracking-tight mt-8 mb-3">Courses you're taking</h2>
         {courses.length === 0 ? (
           <div className="bg-white border-[3px] border-gray-900 rounded-2xl p-6 shadow-[4px_4px_0_#1a1d29] text-gray-600">
             You haven\u2019t started any courses yet.{' '}
