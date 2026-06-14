@@ -57,6 +57,7 @@ export default function DashboardPage() {
   }
 
   const displayName = profile?.full_name || user?.email?.split('@')[0]
+  const initials = (displayName || '?').trim().charAt(0).toUpperCase()
   const isAdmin = ['admin', 'editor', 'reviewer', 'question_maker'].includes(profile?.role)
 
   return (
@@ -83,6 +84,16 @@ export default function DashboardPage() {
           >
             Log out
           </button>
+          <Link href="/profile" title="Your profile" className="shrink-0">
+            {profile?.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.avatar_url} alt="Profile" className="w-9 h-9 rounded-full object-cover border-2 border-gray-900" />
+            ) : (
+              <div className="w-9 h-9 rounded-full border-2 border-gray-900 flex items-center justify-center font-black text-sm text-white" style={{ background: '#00b395' }}>
+                {initials}
+              </div>
+            )}
+          </Link>
         </div>
       </div>
 
