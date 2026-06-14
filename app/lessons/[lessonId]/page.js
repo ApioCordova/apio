@@ -166,6 +166,27 @@ export default function LessonPage() {
     const wasCorrect = selected === item.answer
     if (wasCorrect) setCorrectCount(c => c + 1)
     await logAttempt(item.id, wasCorrect)
+
+    // Practice mode: persist mastery. Correct = mastered (box 5), wrong = stays in pool (box 1).
+    if (isPracticeMode) {
+      const newBox = wasCorrect ? 5 : 1
+      await supabase.from('question_mastery').upsert({
+        user_id: user.id,
+        question_id: item.id,
+        box_level: newBox,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,question_id' })
+      setMasteryByQuestion(prev => ({ ...prev, [item.id]: newBox }))
+    }
+  }
+
+  // Wipe practice mastery for this lesson so the student can redo every question.
+  async function resetPracticeMastery() {
+    const ids = allPracticeQuestions.map(q => q.id)
+    if (ids.length > 0) {
+      await supabase.from('question_mastery').delete().eq('user_id', user.id).in('question_id', ids)
+    }
+    window.location.reload()
   }
 
   async function onContinue() {
@@ -225,6 +246,23 @@ export default function LessonPage() {
       </div>
     )
 
+    if (remaining === 0) return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ background: '#f6fbf8' }}>
+        <div className="w-28 h-28 border-[4px] border-gray-900 rounded-full flex items-center justify-center text-5xl mb-5 shadow-[0_6px_0_#1a1d29]" style={{ background: '#fbbf24' }}>🏆</div>
+        <h1 className="text-4xl font-black tracking-tight mb-2 leading-none">Congratulations!</h1>
+        <p className="text-2xl italic font-normal mb-2" style={{ color: '#00b395' }}>{lesson.title}</p>
+        <p className="text-base font-bold mb-6" style={{ color: '#00b395' }}>You solved all questions on this topic! 🎉</p>
+        <div className="flex gap-2 flex-wrap justify-center">
+          <button onClick={resetPracticeMastery} className="px-6 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm" style={{ background: '#00b395' }}>
+            Redo all questions ↺
+          </button>
+          <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="px-6 py-2.5 bg-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm">
+            Back to lesson tree
+          </Link>
+        </div>
+      </div>
+    )
+
     const percentMastered = Math.round((mastered / total) * 100)
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ background: '#f6fbf8' }}>
@@ -279,6 +317,8 @@ export default function LessonPage() {
     const accuracy = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 100
     const isFullyMastered = levelsCompleted >= maxLevels
     const hasNextLevel = !isPracticeMode && levelsCompleted < maxLevels
+    const allPracticeMastered = isPracticeMode && allPracticeQuestions.length > 0 &&
+      allPracticeQuestions.every(q => (masteryByQuestion[q.id] || 0) >= 5)
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ background: '#f6fbf8' }}>
@@ -287,7 +327,7 @@ export default function LessonPage() {
         </div>
 
         <h1 className="text-4xl font-black tracking-tight mb-2 leading-none">
-          {isPracticeMode ? 'Practice complete!' : isFullyMastered ? 'Lesson mastered!' : `Level ${currentLevelNumber} complete!`}
+          {isPracticeMode ? (allPracticeMastered ? 'Congratulations!' : 'Practice complete!') : isFullyMastered ? 'Lesson mastered!' : `Level ${currentLevelNumber} complete!`}
         </h1>
         <p className="text-2xl italic font-normal mb-2" style={{ color: '#00b395' }}>{lesson.title}</p>
 
@@ -300,7 +340,8 @@ export default function LessonPage() {
           </div>
         )}
 
-        {isPracticeMode && <p className="text-xs text-gray-500 mb-4 font-mono uppercase tracking-widest">// practice mode — mastery tracked</p>}
+        {isPracticeMode && allPracticeMastered && <p className="text-base font-bold mb-4" style={{ color: '#00b395' }}>You solved all questions on this topic! 🎉</p>}
+        {isPracticeMode && !allPracticeMastered && <p className="text-xs text-gray-500 mb-4 font-mono uppercase tracking-widest">// practice mode — mastery tracked</p>}
         {!isPracticeMode && hasNextLevel && <p className="text-sm text-gray-600 mb-4">Level {levelsCompleted} of {maxLevels} complete. Keep going!</p>}
         {!isPracticeMode && isFullyMastered && <p className="text-sm font-bold mb-4" style={{ color: '#fbbf24' }}>⭐ All {maxLevels} levels complete!</p>}
 
@@ -326,9 +367,14 @@ export default function LessonPage() {
           <Link href={course ? `/courses/${course.id}` : '/dashboard'} className={`px-6 py-2.5 border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm ${hasNextLevel ? 'bg-white' : 'text-white'}`} style={!hasNextLevel ? { background: '#00b395' } : {}}>
             Back to lesson tree
           </Link>
-          {isPracticeMode && (
+          {isPracticeMode && !allPracticeMastered && (
             <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm">
               Practice again
+            </button>
+          )}
+          {isPracticeMode && allPracticeMastered && (
+            <button onClick={resetPracticeMastery} className="px-6 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm" style={{ background: '#00b395' }}>
+              Redo all questions ↺
             </button>
           )}
         </div>
