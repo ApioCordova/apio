@@ -26,6 +26,7 @@ export default function ClassCourseModal({ open, onClose, onSuccess, catalog = [
   const [name, setName] = useState('')
   const [courseId, setCourseId] = useState('')
   const [capacity, setCapacity] = useState('')
+  const [teacherCode, setTeacherCode] = useState('')
   const [created, setCreated] = useState(null) // { code }
   const [copied, setCopied] = useState(false)
 
@@ -34,7 +35,7 @@ export default function ClassCourseModal({ open, onClose, onSuccess, catalog = [
   function reset() {
     setStep('choose'); setBusy(false); setError('')
     setCode(''); setJoined(null)
-    setName(''); setCourseId(''); setCapacity(''); setCreated(null); setCopied(false)
+    setName(''); setCourseId(''); setCapacity(''); setTeacherCode(''); setCreated(null); setCopied(false)
   }
   function close() { reset(); onClose?.() }
   function back() { setError(''); setStep('choose') }
@@ -61,15 +62,21 @@ export default function ClassCourseModal({ open, onClose, onSuccess, catalog = [
     setError('')
     if (!name.trim()) { setError('Please enter a class name.'); return }
     if (!courseId)    { setError('Please pick a course.'); return }
+    if (!teacherCode.trim()) { setError('Enter the teacher access code from your admin.'); return }
     setBusy(true)
     const cap = capacity === '' ? null : parseInt(capacity, 10)
     const { data, error: e } = await supabase.rpc('create_class', {
-      p_name: name.trim(), p_course_id: courseId, p_capacity: cap,
+      p_name: name.trim(), p_course_id: courseId, p_capacity: cap, p_teacher_code: teacherCode.trim(),
     })
     setBusy(false)
     if (e) { setError('Something went wrong. Please try again.'); return }
-    if (data?.status === 'ok') { setCreated({ code: data.code }); onSuccess?.() }
-    else setError(data?.message || 'Could not create the class.')
+    switch (data?.status) {
+      case 'ok':           setCreated({ code: data.code }); onSuccess?.(); break
+      case 'invalid_code': setError("That access code isn't valid. Check it with your admin."); break
+      case 'expired_code': setError('That access code has expired. Ask your admin for a new one.'); break
+      case 'code_used_up': setError('That access code has hit its use limit. Ask your admin for a new one.'); break
+      default:             setError(data?.message || 'Could not create the class.')
+    }
   }
 
   function copyCode() {
@@ -210,6 +217,16 @@ export default function ClassCourseModal({ open, onClose, onSuccess, catalog = [
                   onChange={(e) => setCapacity(e.target.value)}
                   placeholder="Up to 50 students"
                   className={`${inputCls} mt-1`}
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Teacher access code</span>
+                <input
+                  value={teacherCode}
+                  onChange={(e) => setTeacherCode(e.target.value.toUpperCase())}
+                  placeholder="From your admin"
+                  maxLength={16}
+                  className={`${inputCls} mt-1 font-mono tracking-[0.2em] uppercase`}
                 />
               </label>
               <div className="flex items-center justify-between gap-3 pt-1">

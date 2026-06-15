@@ -75,6 +75,7 @@ export default function AdminLayout({ children }) {
   { href: '/admin', label: 'Content', icon: '📚' },
   { href: '/admin/review', label: 'Pending Review', icon: '📋' },
   { href: '/admin/contributors', label: 'Contributors', icon: '👥' },
+  { href: '/admin/teacher-codes', label: 'Teacher Access', icon: '🎟' },
   { href: '/admin/analytics', label: 'Analytics', icon: '📊' },
 ]
 
