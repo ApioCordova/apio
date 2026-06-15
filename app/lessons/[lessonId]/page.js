@@ -67,7 +67,14 @@ export default function LessonPage() {
 
       if (!lessonData) { setLoading(false); return }
       setLesson(lessonData)
-      setCourse(lessonData.unit?.course)
+      // Library lessons have unit_id = null (no unit/course join). Fall back to
+      // fetching the course directly so tone/labels still resolve.
+      let courseCtx = lessonData.unit?.course || null
+      if (!courseCtx && lessonData.course_id) {
+        const { data: c } = await supabase.from('courses').select('*').eq('id', lessonData.course_id).maybeSingle()
+        courseCtx = c || null
+      }
+      setCourse(courseCtx)
 
       // Load all levels for this lesson
       let levelsQuery = supabase.from('levels').select('*').eq('lesson_id', lessonId).order('number')

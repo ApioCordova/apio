@@ -53,6 +53,7 @@ export default function ClassPage() {
   const [assignDue, setAssignDue] = useState('')
   const [assignTitle, setAssignTitle] = useState('')
   const [assignRetry, setAssignRetry] = useState(false)
+  const [libLessons, setLibLessons] = useState([])
   const [saving, setSaving] = useState(false)
 
   // teacher: settings modal
@@ -186,15 +187,46 @@ export default function ClassPage() {
     }
     loadSets()
   }, [assignType, assignLessonId])
+  // Load the teacher's PUBLISHED private library lessons so they can be
+  // assigned via the "From Library" option in the Assign-new modal.
+  useEffect(() => {
+    async function loadLib() {
+      if (role !== 'teacher' || !klass?.course_id) { setLibLessons([]); return }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase
+        .from('lessons')
+        .select('id, title, icon, status, max_levels')
+        .eq('owner_id', user.id)
+        .eq('course_id', klass.course_id)
+        .is('unit_id', null)
+        .eq('status', 'published')
+        .order('sort_order')
+      setLibLessons(data || [])
+    }
+    loadLib()
+  }, [role, klass])
+
+  // Private library lessons are assigned as normal lessons; this map lets the
+  // assigned-lessons list and the title fallback resolve their title/icon.
+  const libMeta = {}
+  libLessons.forEach((l) => {
+    libMeta[l.id] = { title: l.title, icon: l.icon || '📚', label: '📚', unitName: 'My Library', maxLevels: l.max_levels }
+  })
 
   async function createAssignment() {
     if (!assignLessonId) { showToast('Pick a lesson first'); return }
     setSaving(true)
+    // "library" is a UI source only — it is stored as a normal lesson so the
+    // student player, completion tracking and stats all work unchanged.
+    const storedType = assignType === 'library' ? 'lesson' : assignType
     const psCount = assignments.filter((a) => a.type === 'problem_set').length
     const setLabel = assignSet === '__prebuilt__' ? 'Prebuilt problem set' : assignSet ? `Problem set: ${assignSet}` : `Problem set ${psCount + 1}`
-    const fallback = assignType === 'problem_set' ? setLabel : (lessonMeta[assignLessonId]?.title || 'Lesson')
+    const fallback = assignType === 'problem_set'
+      ? setLabel
+      : (lessonMeta[assignLessonId]?.title || libMeta[assignLessonId]?.title || 'Lesson')
     const { error } = await supabase.from('class_assignments').insert({
-      class_id: classId, type: assignType, lesson_id: assignLessonId,
+      class_id: classId, type: storedType, lesson_id: assignLessonId,
       title: assignTitle.trim() || fallback, due_date: fromLocalInput(assignDue), sort_order: assignments.length + 1,
       practice_set: assignType === 'problem_set' && assignSet ? assignSet : null,
       allow_retry: assignRetry
@@ -428,7 +460,7 @@ export default function ClassPage() {
         ) : (
           <div className="flex flex-col gap-3 mb-10">
             {lessons.map((a) => {
-              const m = lessonMeta[a.lesson_id]
+              const m = lessonMeta[a.lesson_id] || libMeta[a.lesson_id]
               const closed = ended || isPast(a.due_date)
               return (
                 <div key={a.id} className="flex items-center gap-3 flex-wrap border-[3px] border-gray-900 rounded-2xl p-4 bg-white shadow-[4px_4px_0_#1a1d29]">
@@ -552,24 +584,38 @@ export default function ClassPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setAssignOpen(false); router.push(`/classes/${classId}/custom`) }}
-                  className="col-span-2 px-4 py-3 border-[2.5px] border-gray-900 rounded-xl font-black text-sm shadow-[3px_3px_0_#1a1d29] bg-white flex flex-col items-center gap-1"
+                  onClick={() => setAssignType('library')}
+                  className={`col-span-2 px-4 py-3 border-[2.5px] border-gray-900 rounded-xl font-black text-sm shadow-[3px_3px_0_#1a1d29] flex flex-col items-center gap-1 transition-all ${assignType === 'library' ? 'text-white' : 'bg-white'}`}
+                  style={assignType === 'library' ? { background: '#8b5cf6' } : {}}
                 >
-                  <span>🛠 Custom assignment</span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Build your own · pick &amp; write questions</span>
+                  <span>📚 From Library</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-widest ${assignType === 'library' ? 'text-purple-100' : 'text-gray-500'}`}>Assign a lesson you built</span>
                 </button>
               </div>
-              <label className="block">
-                <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Topic</span>
-                <select value={assignLessonId} onChange={(e) => setAssignLessonId(e.target.value)} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1 bg-white">
-                  <option value="">Pick a topic…</option>
-                  {(course?.units || []).map((u) => (
-                    <optgroup key={u.id} label={`Unit ${u.number}: ${u.name}`}>
-                      {u.lessons.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
-                    </optgroup>
-                  ))}
-                </select>
-              </label>
+              {assignType === 'library' ? (
+                <label className="block">
+                  <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Library lesson</span>
+                  <select value={assignLessonId} onChange={(e) => setAssignLessonId(e.target.value)} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1 bg-white">
+                    <option value="">Pick a library lesson…</option>
+                    {libLessons.map((l) => <option key={l.id} value={l.id}>{l.icon ? `${l.icon} ` : ''}{l.title}</option>)}
+                  </select>
+                  {libLessons.length === 0 && (
+                    <span className="text-[11px] text-gray-500 mt-1 block">No published library lessons yet. Build and publish one in <span className="font-bold">My Library</span> first.</span>
+                  )}
+                </label>
+              ) : (
+                <label className="block">
+                  <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Topic</span>
+                  <select value={assignLessonId} onChange={(e) => setAssignLessonId(e.target.value)} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1 bg-white">
+                    <option value="">Pick a topic…</option>
+                    {(course?.units || []).map((u) => (
+                      <optgroup key={u.id} label={`Unit ${u.number}: ${u.name}`}>
+                        {u.lessons.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
+                </label>
+              )}
 
               {assignType === 'problem_set' && assignLessonId && (
                 <label className="block">
