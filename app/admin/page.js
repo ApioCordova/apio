@@ -23,6 +23,8 @@ export default function AdminContentPage() {
   const [editDraft, setEditDraft] = useState(null)
   const [dragIndex, setDragIndex] = useState(null)
   const [dragOverIndex, setDragOverIndex] = useState(null)
+  const [selectedItemIds, setSelectedItemIds] = useState(new Set())
+  const [bulkSetName, setBulkSetName] = useState('')
 
   const canPublishDirectly = currentRole === 'admin' || currentRole === 'editor'
   const isReviewer = currentRole === 'reviewer'
@@ -306,6 +308,29 @@ export default function AdminContentPage() {
     if (error) { showToast('Failed: ' + error.message); return }
     showToast('Draft reading created'); await loadItems(selectedLessonId)
     openEditor({ ...data, _kind: 'reading' })
+  }
+
+  function toggleSelection(id) {
+    setSelectedItemIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function applySetToSelected() {
+    if (selectedItemIds.size === 0) { showToast('Select some questions first.'); return }
+    if (!bulkSetName.trim()) { showToast('Enter a set name.'); return }
+    
+    const ids = Array.from(selectedItemIds)
+    const { error } = await supabase.from('questions').update({ practice_set: bulkSetName.trim() }).in('id', ids)
+    
+    if (error) { showToast('Failed to apply set: ' + error.message); return }
+    showToast(`✓ Set "${bulkSetName}" applied to ${ids.length} questions`)
+    setSelectedItemIds(new Set())
+    setBulkSetName('')
+    await loadItems(selectedLessonId)
   }
 
   async function toggleQuestionPool(questionId, currentPool) {
@@ -650,7 +675,15 @@ export default function AdminContentPage() {
                       </>
                     )}
                     {contentView === 'practice' && (
-                      <button onClick={() => addQuestion('practice')} className="px-4 py-2 border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29]" style={{ background: '#fbbf24' }}>+ Practice question</button>
+                      <div className="flex gap-2 items-center flex-wrap">
+                        {selectedItemIds.size > 0 && (
+                          <div className="flex gap-2 items-center mr-4 p-1 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+                            <input value={bulkSetName} onChange={e => setBulkSetName(e.target.value)} placeholder="Set name (e.g. Set A)" className="px-2 py-1 text-sm border-2 border-gray-900 rounded-md" />
+                            <button onClick={applySetToSelected} className="px-3 py-1 bg-gray-900 text-white text-xs font-bold rounded-md shadow-sm">Group into Set ({selectedItemIds.size})</button>
+                          </div>
+                        )}
+                        <button onClick={() => addQuestion('practice')} className="px-4 py-2 border-2 border-gray-900 rounded-xl font-bold text-sm shadow-[3px_3px_0_#1a1d29]" style={{ background: '#fbbf24' }}>+ Practice question</button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -681,6 +714,8 @@ export default function AdminContentPage() {
                       onMoveUp={() => moveItem(item, 'up')} onMoveDown={() => moveItem(item, 'down')}
                       onTogglePool={() => toggleQuestionPool(item.id, item.pool)}
                       role={currentRole} currentUserId={currentUser?.id}
+                      isSelected={selectedItemIds.has(item.id)}
+                      onSelect={() => toggleSelection(item.id)}
                     />
                   ))}
                 </div>
@@ -822,22 +857,32 @@ function LessonMetaEditor({ lesson, onUpdate }) {
   )
 }
 
-function ItemCard({ index, item, isFirst, isLast, onEdit, onDelete, onStatusChange, onSendForApproval, onApprove, onDeny, onMoveUp, onMoveDown, onTogglePool, role, currentUserId }) {
+function ItemCard({ index, item, isFirst, isLast, onEdit, onDelete, onStatusChange, onSendForApproval, onApprove, onDeny, onMoveUp, onMoveDown, onTogglePool, role, currentUserId, isSelected, onSelect }) {
   if (item._kind === 'question') {
     return (
-      <div className="bg-white border-2 border-gray-900 rounded-xl p-4 shadow-[3px_3px_0_#1a1d29] flex gap-3">
+      <div className={`border-2 border-gray-900 rounded-xl p-4 shadow-[3px_3px_0_#1a1d29] flex gap-3 ${isSelected ? 'bg-yellow-50 border-yellow-500' : 'bg-white'}`}>
         <ReorderControls isFirst={isFirst} isLast={isLast} onMoveUp={onMoveUp} onMoveDown={onMoveDown} />
         <div className="flex-1">
           <div className="flex justify-between items-start gap-3 mb-2 flex-wrap">
-            <p className="text-xs font-mono tracking-widest uppercase font-bold flex items-center gap-2" style={{ color: '#00b395' }}>
-              📝 Question — item {index + 1} <StatusDot status={item.status} />
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900" style={{ background: item.pool === 'practice' ? '#fbbf24' : '#00b395', color: item.pool === 'practice' ? '#1a1d29' : 'white' }}>{item.pool === 'practice' ? 'PRACTICE' : 'LESSON'}</span>
-              {item.difficulty && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900 text-white" style={{ background: item.difficulty === 'easy' ? '#22c55e' : item.difficulty === 'medium' ? '#eab308' : item.difficulty === 'difficult' ? '#f97316' : '#ef4444' }}>
-                  {item.difficulty === 'very_difficult' ? 'VERY HARD' : item.difficulty.toUpperCase()}
-                </span>
+            <div className="flex items-center gap-2">
+              {item.pool === 'practice' && (
+                <input type="checkbox" checked={!!isSelected} onChange={onSelect} className="w-4 h-4 cursor-pointer accent-gray-900" />
               )}
-            </p>
+              <p className="text-xs font-mono tracking-widest uppercase font-bold flex items-center gap-2" style={{ color: '#00b395' }}>
+                📝 Question — item {index + 1} <StatusDot status={item.status} />
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900" style={{ background: item.pool === 'practice' ? '#fbbf24' : '#00b395', color: item.pool === 'practice' ? '#1a1d29' : 'white' }}>{item.pool === 'practice' ? 'PRACTICE' : 'LESSON'}</span>
+                {item.difficulty && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900 text-white" style={{ background: item.difficulty === 'easy' ? '#22c55e' : item.difficulty === 'medium' ? '#eab308' : item.difficulty === 'difficult' ? '#f97316' : '#ef4444' }}>
+                    {item.difficulty === 'very_difficult' ? 'VERY HARD' : item.difficulty.toUpperCase()}
+                  </span>
+                )}
+                {item.practice_set && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900 text-gray-900 bg-white shadow-[1px_1px_0_#1a1d29]">
+                    SET: {item.practice_set}
+                  </span>
+                )}
+              </p>
+            </div>
             <div className="flex gap-1.5 flex-wrap items-center">
               <button onClick={onTogglePool} className="px-3 py-1 bg-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">↔ {item.pool === 'practice' ? 'To lesson' : 'To practice'}</button>
               <StatusControls status={item.status} onChange={onStatusChange} onSendForApproval={onSendForApproval} onApprove={onApprove} onDeny={onDeny} role={role} isOwnContent={item.created_by === currentUserId} />

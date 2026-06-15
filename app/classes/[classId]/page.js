@@ -46,6 +46,8 @@ export default function ClassPage() {
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignType, setAssignType] = useState('lesson')
   const [assignLessonId, setAssignLessonId] = useState('')
+  const [assignSet, setAssignSet] = useState('')
+  const [availableSets, setAvailableSets] = useState([])
   const [assignDue, setAssignDue] = useState('')
   const [assignTitle, setAssignTitle] = useState('')
   const [saving, setSaving] = useState(false)
@@ -143,16 +145,37 @@ export default function ClassPage() {
   }
 
   // ---- teacher actions ----
-  function openAssign(type) { setAssignType(type); setAssignLessonId(''); setAssignDue(''); setAssignTitle(''); setAssignOpen(true) }
+  function openAssign(type) { setAssignType(type); setAssignLessonId(''); setAssignSet(''); setAvailableSets([]); setAssignDue(''); setAssignTitle(''); setAssignOpen(true) }
+
+  useEffect(() => {
+    async function loadSets() {
+      if (assignType === 'problem_set' && assignLessonId) {
+        const { data } = await supabase.from('questions')
+          .select('practice_set')
+          .eq('lesson_id', assignLessonId)
+          .eq('pool', 'practice')
+          .not('practice_set', 'is', null)
+        
+        const uniqueSets = [...new Set(data?.map(q => q.practice_set).filter(Boolean) || [])]
+        setAvailableSets(uniqueSets)
+        setAssignSet(uniqueSets[0] || '')
+      } else {
+        setAvailableSets([])
+        setAssignSet('')
+      }
+    }
+    loadSets()
+  }, [assignType, assignLessonId])
 
   async function createAssignment() {
     if (!assignLessonId) { showToast('Pick a lesson first'); return }
     setSaving(true)
     const psCount = assignments.filter((a) => a.type === 'problem_set').length
-    const fallback = assignType === 'problem_set' ? `Problem set ${psCount + 1}` : (lessonMeta[assignLessonId]?.title || 'Lesson')
+    const fallback = assignType === 'problem_set' ? (assignSet ? `Problem set: ${assignSet}` : `Problem set ${psCount + 1}`) : (lessonMeta[assignLessonId]?.title || 'Lesson')
     const { error } = await supabase.from('class_assignments').insert({
       class_id: classId, type: assignType, lesson_id: assignLessonId,
       title: assignTitle.trim() || fallback, due_date: fromLocalInput(assignDue), sort_order: assignments.length + 1,
+      practice_set: assignType === 'problem_set' ? assignSet : null
     })
     setSaving(false)
     if (error) { showToast('Could not assign: ' + error.message); return }
@@ -235,7 +258,7 @@ export default function ClassPage() {
     const StudentItem = ({ a, isLocked }) => {
       const m = lessonMeta[a.lesson_id]
       const title = a.title || m?.title || (a.type === 'problem_set' ? 'Problem set' : 'Lesson')
-      const href = a.type === 'problem_set' ? `/lessons/${a.lesson_id}?mode=practice` : `/lessons/${a.lesson_id}`
+      const href = a.type === 'problem_set' ? `/lessons/${a.lesson_id}?mode=practice&set=${encodeURIComponent(a.practice_set || '')}` : `/lessons/${a.lesson_id}`
       const prog = progressMap[a.lesson_id]
       const progText = prog ? `Level ${Math.min(prog.current_level || 1, m?.maxLevels || prog.current_level || 1)}${m?.maxLevels ? ` / ${m.maxLevels}` : ''}` : 'Not started'
       const inner = (
@@ -397,7 +420,7 @@ export default function ClassPage() {
                     <div className="w-14 h-14 shrink-0 border-[2.5px] border-gray-900 rounded-full flex items-center justify-center font-black text-lg" style={{ background: tone, color: '#fff' }}>{i + 1}</div>
                     <div className="min-w-0">
                       <p className="font-black tracking-tight truncate">{a.title || `Problem set ${i + 1}`}</p>
-                      <p className="text-xs font-mono text-gray-500 truncate">from {m?.title || 'lesson'}</p>
+                      <p className="text-xs font-mono text-gray-500 truncate">{a.practice_set ? `Set: ${a.practice_set}` : 'All practice'} · from {m?.title || 'lesson'}</p>
                     </div>
                   </div>
                   <p className="text-xs font-mono text-gray-500 mb-3 border-t border-dashed border-gray-300 pt-2">{closed ? `Due ${formatDue(a.due_date)} · closed` : `Due ${formatDue(a.due_date)}`}</p>

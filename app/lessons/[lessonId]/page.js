@@ -11,6 +11,7 @@ export default function LessonPage() {
   const searchParams = useSearchParams()
   const lessonId = params.lessonId
   const isPracticeMode = searchParams.get('mode') === 'practice'
+  const assignedSet = searchParams.get('set')
 
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -94,7 +95,18 @@ export default function LessonPage() {
 
       if (isPracticeMode) {
         // Practice mode — only practice-pool questions (no level filtering)
-        const practiceQs = (qData || []).filter(q => q.pool === 'practice')
+        let practiceQs = (qData || []).filter(q => q.pool === 'practice')
+        
+        // If a specific set is assigned, filter to only those questions and auto-start!
+        if (assignedSet) {
+          practiceQs = practiceQs.filter(q => q.practice_set === assignedSet)
+          setAllPracticeQuestions(practiceQs)
+          setItems(practiceQs.map(q => ({ ...q, _kind: 'question' })))
+          setPracticeSetupNeeded(false)
+          setLoading(false)
+          return
+        }
+
         setAllPracticeQuestions(practiceQs)
 
         const ids = practiceQs.map(q => q.id)
