@@ -7,6 +7,7 @@ import RichEditor from './RichEditor'
 export default function AdminContentPage() {
   const [courses, setCourses] = useState([])
   const [selectedCourseId, setSelectedCourseId] = useState(null)
+  const [courseMenuOpen, setCourseMenuOpen] = useState(false)
   const [selectedLessonId, setSelectedLessonId] = useState(null)
   const [levels, setLevels] = useState([])
   const [selectedLevelId, setSelectedLevelId] = useState(null)
@@ -462,50 +463,78 @@ export default function AdminContentPage() {
         {/* Sidebar */}
         <aside className="border-2 border-gray-900 rounded-xl p-3 max-h-[80vh] overflow-y-auto" style={{ background: '#f6fbf8' }}>
           <p className="text-xs font-mono tracking-widest text-gray-600 uppercase px-2 mb-2">Courses</p>
-          {courses.map((course, ci) => (
-            <div key={course.id} className="mb-3">
-              <div
-                onDragOver={(e) => handleCourseDragOver(e, ci)}
-                onDrop={(e) => handleCourseDrop(e, ci)}
-                className={`flex items-center gap-1 rounded-lg ${dragOverIndex === ci && dragIndex !== ci ? 'ring-2 ring-[#00b395]' : ''} ${dragIndex === ci ? 'opacity-40' : ''}`}
-              >
-                <span
-                  draggable
-                  onDragStart={(e) => handleCourseDragStart(e, ci)}
-                  onDragEnd={handleCourseDragEnd}
-                  className="cursor-grab active:cursor-grabbing px-1 text-gray-400 hover:text-gray-700 select-none"
-                  title="Drag to reorder"
-                >⠿</span>
-                <button onClick={() => { setSelectedCourseId(course.id); setSelectedLessonId(null); setSelectedLevelId(null) }} className={`flex-1 text-left px-2 py-2 rounded-lg font-bold text-sm flex items-center gap-2 ${selectedCourseId === course.id ? 'bg-gray-900 text-white' : 'hover:bg-gray-100'}`}>
-                  <span>{course.icon}</span><span className="flex-1 truncate">{course.short_title}</span><StatusDot status={course.status} />
-                </button>
-                {selectedCourseId === course.id && <button onClick={() => deleteCourse(course.id, course.title)} className="px-2 py-1 text-xs rounded text-red-600 hover:bg-red-100">🗑</button>}
-              </div>
-              {selectedCourseId === course.id && (<>
-                {course.units.map((unit) => (
-                  <div key={unit.id} className="ml-2 mt-1 mb-2">
-                    <div className="flex items-center gap-1 group px-2 py-1">
-                      <p className="text-xs font-mono uppercase text-gray-500 truncate flex-1 flex items-center gap-1">Unit {unit.number}: {unit.name}<StatusDot status={unit.status} small /></p>
-                      <button onClick={() => deleteUnit(unit.id, unit.name, unit.lessons.length)} className="px-1.5 py-0.5 text-xs text-red-600 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded">🗑</button>
-                    </div>
-                    {unit.lessons.map((lesson) => (
-                      <div key={lesson.id} className="flex items-center gap-1 group ml-2">
-                        <button onClick={() => { setSelectedLessonId(lesson.id); setSelectedLevelId(null); setContentView('lesson') }} className={`flex-1 text-left px-3 py-1.5 rounded-md text-xs flex items-center gap-2 ${selectedLessonId === lesson.id ? 'text-white font-bold' : 'hover:bg-gray-100'}`} style={selectedLessonId === lesson.id ? { background: '#00b395' } : {}}>
-                          <StatusDot status={lesson.status} small /><span className="truncate">{lesson.title}</span>
-                        </button>
-                        <button onClick={() => deleteLesson(lesson.id, lesson.title)} className="px-1.5 py-0.5 text-xs text-red-600 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded">🗑</button>
-                      </div>
-                    ))}
-                    <button onClick={() => addLesson(unit.id)} className="w-full text-left px-3 py-1.5 ml-2 rounded-md text-xs text-gray-600 hover:bg-gray-100 italic">+ Add lesson</button>
-                  </div>
-                ))}
-                <button onClick={() => addUnit(course.id)} className="w-full text-left px-3 py-1.5 ml-2 mt-1 rounded-md text-xs text-gray-600 hover:bg-gray-100 italic font-bold">+ Add unit</button>
-              </>)}
-            </div>
-          ))}
-          <button onClick={addCourse} className="w-full mt-3 px-3 py-2 border-2 border-dashed border-gray-400 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-100 hover:border-solid">+ Add course</button>
-        </aside>
 
+          {/* Course selector pill */}
+          <div className="relative mb-3">
+            <button
+              onClick={() => setCourseMenuOpen((v) => !v)}
+              className="w-full flex items-center gap-2 px-3 py-2.5 border-2 border-gray-900 rounded-xl font-bold text-sm bg-white shadow-[2px_2px_0_#1a1d29]"
+            >
+              {selectedCourse ? (
+                <>
+                  <span>{selectedCourse.icon}</span>
+                  <span className="flex-1 truncate text-left">{selectedCourse.short_title}</span>
+                  <StatusDot status={selectedCourse.status} />
+                </>
+              ) : (
+                <span className="flex-1 text-left text-gray-500">Select a course…</span>
+              )}
+              <span className="text-gray-500">{courseMenuOpen ? '▲' : '▼'}</span>
+            </button>
+
+            {courseMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setCourseMenuOpen(false)} />
+                <div className="absolute left-0 right-0 mt-1 z-40 bg-white border-2 border-gray-900 rounded-xl shadow-[4px_4px_0_#1a1d29] overflow-hidden max-h-72 overflow-y-auto">
+                  {courses.length === 0 && <p className="px-3 py-2 text-sm text-gray-500">No courses yet.</p>}
+                  {courses.map((course, ci) => (
+                    <div key={course.id} className={`flex items-center gap-1 border-b border-gray-100 last:border-0 ${selectedCourseId === course.id ? 'bg-gray-900' : ''}`}>
+                      <button
+                        onClick={() => { setSelectedCourseId(course.id); setSelectedLessonId(null); setSelectedLevelId(null); setCourseMenuOpen(false) }}
+                        className={`flex-1 text-left px-3 py-2 font-bold text-sm flex items-center gap-2 ${selectedCourseId === course.id ? 'text-white' : 'hover:bg-gray-100'}`}
+                      >
+                        <span>{course.icon}</span><span className="flex-1 truncate">{course.short_title}</span><StatusDot status={course.status} />
+                      </button>
+                      <div className="flex flex-col px-1">
+                        <button onClick={() => moveCourse(course, 'up')} disabled={ci === 0} className={`text-[10px] leading-none px-1 disabled:opacity-30 ${selectedCourseId === course.id ? 'text-white' : 'text-gray-500'}`} title="Move up">▲</button>
+                        <button onClick={() => moveCourse(course, 'down')} disabled={ci === courses.length - 1} className={`text-[10px] leading-none px-1 disabled:opacity-30 ${selectedCourseId === course.id ? 'text-white' : 'text-gray-500'}`} title="Move down">▼</button>
+                      </div>
+                    </div>
+                  ))}
+                  <button onClick={() => { addCourse(); setCourseMenuOpen(false) }} className="w-full text-left px-3 py-2 text-sm font-bold text-gray-600 hover:bg-gray-100 border-t-2 border-gray-200">+ Add course</button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Selected course unfolds */}
+          {selectedCourse && (
+            <div className="mb-3">
+              <div className="flex items-center gap-1 mb-1">
+                <p className="flex-1 text-xs font-mono uppercase tracking-widest text-gray-500 truncate px-1">{selectedCourse.title}</p>
+                <button onClick={() => deleteCourse(selectedCourse.id, selectedCourse.title)} className="px-2 py-1 text-xs rounded text-red-600 hover:bg-red-100" title="Delete course">🗑</button>
+              </div>
+              {selectedCourse.units.map((unit) => (
+                <div key={unit.id} className="ml-2 mt-1 mb-2">
+                  <div className="flex items-center gap-1 group px-2 py-1">
+                    <p className="text-xs font-mono uppercase text-gray-500 truncate flex-1 flex items-center gap-1">Unit {unit.number}: {unit.name}<StatusDot status={unit.status} small /></p>
+                    <button onClick={() => deleteUnit(unit.id, unit.name, unit.lessons.length)} className="px-1.5 py-0.5 text-xs text-red-600 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded">🗑</button>
+                  </div>
+                  {unit.lessons.map((lesson) => (
+                    <div key={lesson.id} className="flex items-center gap-1 group ml-2">
+                      <button onClick={() => { setSelectedLessonId(lesson.id); setSelectedLevelId(null); setContentView('lesson') }} className={`flex-1 text-left px-3 py-1.5 rounded-md text-xs flex items-center gap-2 ${selectedLessonId === lesson.id ? 'text-white font-bold' : 'hover:bg-gray-100'}`} style={selectedLessonId === lesson.id ? { background: '#00b395' } : {}}>
+                        <StatusDot status={lesson.status} small /><span className="truncate">{lesson.title}</span>
+                      </button>
+                      <button onClick={() => deleteLesson(lesson.id, lesson.title)} className="px-1.5 py-0.5 text-xs text-red-600 opacity-0 group-hover:opacity-100 hover:bg-red-100 rounded">🗑</button>
+                    </div>
+                  ))}
+                  <button onClick={() => addLesson(unit.id)} className="w-full text-left px-3 py-1.5 ml-2 rounded-md text-xs text-gray-600 hover:bg-gray-100 italic">+ Add lesson</button>
+                </div>
+              ))}
+              <button onClick={() => addUnit(selectedCourse.id)} className="w-full text-left px-3 py-1.5 ml-2 mt-1 rounded-md text-xs text-gray-600 hover:bg-gray-100 italic font-bold">+ Add unit</button>
+            </div>
+          )}
+        </aside>
         {/* Editor panel */}
         <div>
           {!selectedLesson ? (
