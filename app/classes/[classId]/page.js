@@ -5,7 +5,6 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
-import CustomBuilder from './CustomBuilder'
 
 const toneOf = (c) => {
   const t = c?.tone
@@ -55,7 +54,6 @@ export default function ClassPage() {
   const [assignTitle, setAssignTitle] = useState('')
   const [assignRetry, setAssignRetry] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [customOpen, setCustomOpen] = useState(false)
 
   // teacher: settings modal
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -475,7 +473,7 @@ export default function ClassPage() {
                     <p className="text-xs font-mono text-gray-500">{closed ? `Due ${formatDue(a.due_date)} · closed` : `Due ${formatDue(a.due_date)}`}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => setCustomOpen(true)} className="px-3 py-1.5 border-2 border-gray-900 rounded-lg text-xs font-bold bg-white shadow-[2px_2px_0_#1a1d29]">Manage</button>
+                    <button onClick={() => router.push(`/classes/${classId}/custom`)} className="px-3 py-1.5 border-2 border-gray-900 rounded-lg text-xs font-bold bg-white shadow-[2px_2px_0_#1a1d29]">Manage</button>
                     <button onClick={() => removeAssignment(a.id, a.title || 'custom assignment')} className="px-3 py-1.5 border-2 border-gray-900 rounded-lg text-xs font-bold text-red-600 bg-white shadow-[2px_2px_0_#1a1d29]">Delete</button>
                   </div>
                 </div>
@@ -524,16 +522,6 @@ export default function ClassPage() {
           </div>
         )}
       </div>
-
-      {customOpen && (
-        <CustomBuilder
-          classId={classId}
-          course={course}
-          tone={tone}
-          onClose={() => setCustomOpen(false)}
-          onSaved={reloadAssignments}
-        />
-      )}
       {assignOpen && (
         <div className="fixed inset-0 z-[150] flex items-start justify-center p-4 md:p-8 overflow-y-auto" style={{ background: 'rgba(26,29,41,0.55)' }} onClick={() => setAssignOpen(false)}>
           <div className="w-full max-w-lg bg-white border-[3px] border-gray-900 rounded-2xl shadow-[8px_8px_0_#1a1d29] my-auto" onClick={(e) => e.stopPropagation()}>
@@ -564,7 +552,7 @@ export default function ClassPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setAssignOpen(false); setCustomOpen(true) }}
+                  onClick={() => { setAssignOpen(false); router.push(`/classes/${classId}/custom`) }}
                   className="col-span-2 px-4 py-3 border-[2.5px] border-gray-900 rounded-xl font-black text-sm shadow-[3px_3px_0_#1a1d29] bg-white flex flex-col items-center gap-1"
                 >
                   <span>🛠 Custom assignment</span>
