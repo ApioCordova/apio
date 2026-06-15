@@ -103,7 +103,7 @@ export default function AdminContentPage() {
 
   async function saveAndCloseQuestion() {
     const { error } = await supabase.from('questions').update({
-      stem: editDraft.stem, choices: editDraft.choices, answer: editDraft.answer, explanation: editDraft.explanation, difficulty: editDraft.difficulty || null,
+      stem: editDraft.stem, choices: editDraft.choices, answer: editDraft.answer, explanation: editDraft.explanation, difficulty: editDraft.difficulty || null, in_problem_set: !!editDraft.in_problem_set,
     }).eq('id', editDraft.id)
     if (error) { showToast('Save failed: ' + error.message); return }
     showToast('✓ Question saved'); closeEditor(); await loadItems(selectedLessonId)
@@ -430,6 +430,29 @@ export default function AdminContentPage() {
                       <button type="button" onClick={() => setEditDraft({ ...editDraft, choices: [...editDraft.choices, `Option ${String.fromCharCode(65 + editDraft.choices.length)}`] })} className="mt-2 px-4 py-2 bg-white border-2 border-dashed border-gray-400 rounded-lg text-sm font-bold">+ Add choice</button>
                     )}
                   </div>
+                  {editDraft.pool === 'practice' && (
+                    <div className="mt-6">
+                      <Field label="Prebuilt problem set">
+                        <button
+                          type="button"
+                          onClick={() => setEditDraft({ ...editDraft, in_problem_set: !editDraft.in_problem_set })}
+                          className="flex items-center gap-3 w-full text-left px-4 py-3 border-2 border-gray-900 rounded-xl bg-white shadow-[3px_3px_0_#1a1d29]"
+                        >
+                          <span className="w-11 h-6 rounded-full border-2 border-gray-900 flex-shrink-0 relative" style={{ background: editDraft.in_problem_set ? '#8b5cf6' : '#e5e7eb' }}>
+                            <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white border border-gray-900 transition-all" style={{ left: editDraft.in_problem_set ? '22px' : '2px' }} />
+                          </span>
+                          <span className="text-sm font-bold">
+                            {editDraft.in_problem_set
+                              ? 'Included in this lesson’s prebuilt problem set'
+                              : 'Practice pool only — tap to add to the prebuilt problem set'}
+                          </span>
+                        </button>
+                        <p className="text-[11px] text-gray-500 mt-1.5">
+                          Flagged questions stay in the practice pool and also appear in the lesson’s prebuilt problem set that teachers can assign.
+                        </p>
+                      </Field>
+                    </div>
+                  )}
                   <div className="mt-6">
                     <Field label="Difficulty">
                       <div className="flex gap-2 flex-wrap">
@@ -879,6 +902,11 @@ function ItemCard({ index, item, isFirst, isLast, onEdit, onDelete, onStatusChan
                 {item.difficulty && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900 text-white" style={{ background: item.difficulty === 'easy' ? '#22c55e' : item.difficulty === 'medium' ? '#eab308' : item.difficulty === 'difficult' ? '#f97316' : '#ef4444' }}>
                     {item.difficulty === 'very_difficult' ? 'VERY HARD' : item.difficulty.toUpperCase()}
+                  </span>
+                )}
+                {item.in_problem_set && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900 text-white" style={{ background: '#8b5cf6' }}>
+                    ★ PROBLEM SET
                   </span>
                 )}
                 {item.practice_set && (

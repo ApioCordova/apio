@@ -99,7 +99,9 @@ export default function LessonPage() {
         
         // If a specific set is assigned, filter to only those questions and auto-start!
         if (assignedSet) {
-          practiceQs = practiceQs.filter(q => q.practice_set === assignedSet)
+          practiceQs = assignedSet === '__prebuilt__'
+            ? practiceQs.filter(q => q.in_problem_set)
+            : practiceQs.filter(q => q.practice_set === assignedSet)
           setAllPracticeQuestions(practiceQs)
           setItems(practiceQs.map(q => ({ ...q, _kind: 'question' })))
           setPracticeSetupNeeded(false)

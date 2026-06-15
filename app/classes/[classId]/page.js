@@ -48,6 +48,7 @@ export default function ClassPage() {
   const [assignLessonId, setAssignLessonId] = useState('')
   const [assignSet, setAssignSet] = useState('')
   const [availableSets, setAvailableSets] = useState([])
+  const [hasPrebuilt, setHasPrebuilt] = useState(false)
   const [assignDue, setAssignDue] = useState('')
   const [assignTitle, setAssignTitle] = useState('')
   const [saving, setSaving] = useState(false)
@@ -151,16 +152,16 @@ export default function ClassPage() {
     async function loadSets() {
       if (assignType === 'problem_set' && assignLessonId) {
         const { data } = await supabase.from('questions')
-          .select('practice_set')
+          .select('practice_set, in_problem_set')
           .eq('lesson_id', assignLessonId)
-          .eq('pool', 'problem_set')
-          .not('practice_set', 'is', null)
-        
-        const uniqueSets = [...new Set(data?.map(q => q.practice_set).filter(Boolean) || [])]
+          .eq('pool', 'practice')
+        const uniqueSets = [...new Set((data || []).map(q => q.practice_set).filter(Boolean))]
         setAvailableSets(uniqueSets)
-        setAssignSet('')   // default = entire practice pool
+        setHasPrebuilt((data || []).some(q => q.in_problem_set))
+        setAssignSet((data || []).some(q => q.in_problem_set) ? '__prebuilt__' : '')
       } else {
         setAvailableSets([])
+        setHasPrebuilt(false)
         setAssignSet('')
       }
     }
@@ -171,7 +172,8 @@ export default function ClassPage() {
     if (!assignLessonId) { showToast('Pick a lesson first'); return }
     setSaving(true)
     const psCount = assignments.filter((a) => a.type === 'problem_set').length
-    const fallback = assignType === 'problem_set' ? (assignSet ? `Problem set: ${assignSet}` : `Problem set ${psCount + 1}`) : (lessonMeta[assignLessonId]?.title || 'Lesson')
+    const setLabel = assignSet === '__prebuilt__' ? 'Prebuilt problem set' : assignSet ? `Problem set: ${assignSet}` : `Problem set ${psCount + 1}`
+    const fallback = assignType === 'problem_set' ? setLabel : (lessonMeta[assignLessonId]?.title || 'Lesson')
     const { error } = await supabase.from('class_assignments').insert({
       class_id: classId, type: assignType, lesson_id: assignLessonId,
       title: assignTitle.trim() || fallback, due_date: fromLocalInput(assignDue), sort_order: assignments.length + 1,
@@ -420,7 +422,7 @@ export default function ClassPage() {
                     <div className="w-14 h-14 shrink-0 border-[2.5px] border-gray-900 rounded-full flex items-center justify-center font-black text-lg" style={{ background: tone, color: '#fff' }}>{i + 1}</div>
                     <div className="min-w-0">
                       <p className="font-black tracking-tight truncate">{a.title || `Problem set ${i + 1}`}</p>
-                      <p className="text-xs font-mono text-gray-500 truncate">{a.practice_set ? `Set: ${a.practice_set}` : 'All practice'} · from {m?.title || 'lesson'}</p>
+                      <p className="text-xs font-mono text-gray-500 truncate">{a.practice_set === '__prebuilt__' ? 'Prebuilt set' : a.practice_set ? `Set: ${a.practice_set}` : 'All practice'} · from {m?.title || 'lesson'}</p>
                     </div>
                   </div>
                   <p className="text-xs font-mono text-gray-500 mb-3 border-t border-dashed border-gray-300 pt-2">{closed ? `Due ${formatDue(a.due_date)} · closed` : `Due ${formatDue(a.due_date)}`}</p>
@@ -490,6 +492,7 @@ export default function ClassPage() {
                 <label className="block">
                   <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Practice set</span>
                   <select value={assignSet} onChange={(e) => setAssignSet(e.target.value)} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1 bg-white">
+                    {hasPrebuilt && <option value="__prebuilt__">Prebuilt problem set (flagged questions)</option>}
                     <option value="">All practice questions in this topic</option>
                     {availableSets.map((s) => <option key={s} value={s}>Set: {s}</option>)}
                   </select>
