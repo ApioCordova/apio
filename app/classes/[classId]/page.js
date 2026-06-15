@@ -433,23 +433,38 @@ export default function ClassPage() {
               <button onClick={() => setAssignOpen(false)} className="w-9 h-9 border-2 border-gray-900 rounded-full bg-white flex items-center justify-center font-bold shadow-[2px_2px_0_#1a1d29]" aria-label="Close">✕</button>
             </div>
             <div className="p-6 space-y-5">
-              <div className="grid grid-cols-2 gap-3">
-                {['lesson', 'problem_set'].map((t) => (
-                  <button key={t} onClick={() => setAssignType(t)} className={`px-4 py-3 border-[2.5px] border-gray-900 rounded-xl font-black text-sm shadow-[3px_3px_0_#1a1d29] ${assignType === t ? 'text-white' : 'bg-white'}`} style={assignType === t ? { background: '#00b395' } : {}}>
-                    {t === 'lesson' ? '📘 Lesson' : '✏️ Problem set'}
-                  </button>
-                ))}
+              <div className="grid grid-cols-2 gap-3 mb-2">
+                <button 
+                  onClick={() => setAssignType('lesson')} 
+                  className={`px-4 py-3 border-[2.5px] border-gray-900 rounded-xl font-black text-sm shadow-[3px_3px_0_#1a1d29] flex flex-col items-center gap-1 transition-all ${assignType === 'lesson' ? 'text-white' : 'bg-white'}`} 
+                  style={assignType === 'lesson' ? { background: '#00b395' } : {}}
+                >
+                  <span>📘 Lesson</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-widest ${assignType === 'lesson' ? 'text-teal-100' : 'text-gray-500'}`}>From Levels</span>
+                </button>
+                <button 
+                  onClick={() => setAssignType('problem_set')} 
+                  className={`px-4 py-3 border-[2.5px] border-gray-900 rounded-xl font-black text-sm shadow-[3px_3px_0_#1a1d29] flex flex-col items-center gap-1 transition-all ${assignType === 'problem_set' ? 'text-white' : 'bg-white'}`} 
+                  style={assignType === 'problem_set' ? { background: '#00b395' } : {}}
+                >
+                  <span>🎯 Problem set</span>
+                  <span className={`text-[10px] font-bold uppercase tracking-widest ${assignType === 'problem_set' ? 'text-teal-100' : 'text-gray-500'}`}>From Practice Pool</span>
+                </button>
               </div>
               <label className="block">
-                <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Lesson</span>
-                <select value={assignLessonId} onChange={(e) => setAssignLessonId(e.target.value)} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1">
-                  <option value="">Pick a lesson…</option>
+                <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Topic</span>
+                <select value={assignLessonId} onChange={(e) => setAssignLessonId(e.target.value)} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1 bg-white">
+                  <option value="">Pick a topic…</option>
                   {(course?.units || []).map((u) => (
                     <optgroup key={u.id} label={`Unit ${u.number}: ${u.name}`}>
                       {u.lessons.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
                     </optgroup>
                   ))}
                 </select>
+              </label>
+              <label className="block">
+                <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Title <span className="normal-case tracking-normal">(optional)</span></span>
+                <input value={assignTitle} onChange={(e) => setAssignTitle(e.target.value)} placeholder={assignType === 'problem_set' ? 'e.g. Problem set 1' : 'Defaults to the topic title'} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1" />
               </label>
               <label className="block">
                 <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Title <span className="normal-case tracking-normal">(optional)</span></span>
