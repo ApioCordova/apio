@@ -52,6 +52,7 @@ export default function ClassPage() {
   const [hasPrebuilt, setHasPrebuilt] = useState(false)
   const [assignDue, setAssignDue] = useState('')
   const [assignTitle, setAssignTitle] = useState('')
+  const [assignRetry, setAssignRetry] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // teacher: settings modal
@@ -164,7 +165,7 @@ export default function ClassPage() {
   }
 
   // ---- teacher actions ----
-  function openAssign(type) { setAssignType(type); setAssignLessonId(''); setAssignSet(''); setAvailableSets([]); setAssignDue(''); setAssignTitle(''); setAssignOpen(true) }
+  function openAssign(type) { setAssignType(type); setAssignLessonId(''); setAssignSet(''); setAvailableSets([]); setAssignDue(''); setAssignTitle(''); setAssignRetry(false); setAssignOpen(true) }
 
   useEffect(() => {
     async function loadSets() {
@@ -195,7 +196,8 @@ export default function ClassPage() {
     const { error } = await supabase.from('class_assignments').insert({
       class_id: classId, type: assignType, lesson_id: assignLessonId,
       title: assignTitle.trim() || fallback, due_date: fromLocalInput(assignDue), sort_order: assignments.length + 1,
-      practice_set: assignType === 'problem_set' && assignSet ? assignSet : null
+      practice_set: assignType === 'problem_set' && assignSet ? assignSet : null,
+      allow_retry: assignRetry
     })
     setSaving(false)
     if (error) { showToast('Could not assign: ' + error.message); return }
@@ -290,6 +292,7 @@ export default function ClassPage() {
       const sep = base.endsWith('?') ? '' : '&'
       const liveHref = `${base}${sep}assignment=${a.id}`
       const reviewHref = `${liveHref}&review=1`
+      const href = a.type === 'problem_set' ? `/lessons/${a.lesson_id}?mode=practice&set=${encodeURIComponent(a.practice_set || '')}&assignment=${a.id}` : `/lessons/${a.lesson_id}?assignment=${a.id}`
 
       // Completed → gold, locked to review-only, shows the final accuracy.
       if (isDone) {
@@ -559,6 +562,12 @@ export default function ClassPage() {
                 <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Due date <span className="normal-case tracking-normal">(optional — locks for students)</span></span>
                 <input type="datetime-local" value={assignDue} onChange={(e) => setAssignDue(e.target.value)} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1" />
               </label>
+              <button type="button" onClick={() => setAssignRetry(v => !v)} className="flex items-center gap-3 w-full text-left px-4 py-3 border-2 border-gray-900 rounded-xl bg-white shadow-[3px_3px_0_#1a1d29]">
+  <span className="w-11 h-6 rounded-full border-2 border-gray-900 flex-shrink-0 relative" style={{ background: assignRetry ? '#00b395' : '#e5e7eb' }}>
+    <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white border border-gray-900 transition-all" style={{ left: assignRetry ? '22px' : '2px' }} />
+  </span>
+  <span className="text-sm font-bold">{assignRetry ? 'Students can retry after finishing' : 'No retries — one attempt only'}</span>
+</button>
               <div className="flex justify-end">
                 <button onClick={createAssignment} disabled={saving} className="px-6 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide text-sm shadow-[4px_4px_0_#1a1d29] disabled:opacity-50" style={{ background: '#00b395' }}>{saving ? 'Assigning…' : 'Assign'}</button>
               </div>

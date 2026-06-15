@@ -39,12 +39,21 @@ export default function LessonPage() {
   const [checked, setChecked] = useState(false)
   const [correctCount, setCorrectCount] = useState(0)
   const [completed, setCompleted] = useState(false)
+  const [assignment, setAssignment] = useState(null)
 
   useEffect(() => {
     async function loadData() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setUser(user)
+      if (assignmentId) {
+  const { data: aData } = await supabase
+    .from('class_assignments')
+    .select('id, class_id, allow_retry, type')
+    .eq('id', assignmentId)
+    .maybeSingle()
+  if (aData) setAssignment(aData)
+}
 
       const { data: profileData } = await supabase
         .from('profiles').select('*').eq('id', user.id).single()
@@ -283,7 +292,7 @@ export default function LessonPage() {
       <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ background: '#f6fbf8' }}>
         <h1 className="text-3xl font-black tracking-tight mb-3">No practice questions yet</h1>
         <p className="text-gray-600 mb-6 max-w-md">This lesson does not have any practice questions yet.</p>
-        <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="px-6 py-3 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]" style={{ background: '#00b395' }}>← Back</Link>
+        <Link href={assignment?.class_id ? `/classes/${assignment.class_id}` : (course ? `/courses/${course.id}` : '/dashboard')} className="px-6 py-3 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]" style={{ background: '#00b395' }}>← Back</Link>
       </div>
     )
 
@@ -297,7 +306,7 @@ export default function LessonPage() {
           <button onClick={resetPracticeMastery} className="px-6 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm" style={{ background: '#00b395' }}>
             Redo all questions ↺
           </button>
-          <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="px-6 py-2.5 bg-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm">
+          <Link href={assignment?.class_id ? `/classes/${assignment.class_id}` : (course ? `/courses/${course.id}` : '/dashboard')} className="px-6 py-2.5 bg-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm">
             Back to lesson tree
           </Link>
         </div>
@@ -308,7 +317,7 @@ export default function LessonPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ background: '#f6fbf8' }}>
         <div className="max-w-md w-full">
-          <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="inline-flex items-center gap-1 px-3 py-1.5 mb-4 bg-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]">← Back</Link>
+          <Link href={assignment?.class_id ? `/classes/${assignment.class_id}` : (course ? `/courses/${course.id}` : '/dashboard')} className="inline-flex items-center gap-1 px-3 py-1.5 mb-4 bg-white border-2 border-gray-900 rounded-full text-xs font-bold shadow-[2px_2px_0_#1a1d29]">← Back</Link>
           <p className="text-xs font-mono tracking-widest uppercase mb-2" style={{ color: '#00b395' }}>// practice problems</p>
           <h1 className="text-3xl font-black tracking-tight leading-tight mb-1">{lesson.title}</h1>
           <p className="text-sm text-gray-600 mb-6">Drill the practice question pool. Wrong answers come back more often.</p>
@@ -348,7 +357,7 @@ export default function LessonPage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center" style={{ background: '#f6fbf8' }}>
       <h1 className="text-3xl font-black tracking-tight mb-3">No content yet</h1>
       <p className="text-gray-600 mb-6">This level does not have content yet.</p>
-      <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="px-6 py-3 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]" style={{ background: '#00b395' }}>← Back</Link>
+      <Link href={assignment?.class_id ? `/classes/${assignment.class_id}` : (course ? `/courses/${course.id}` : '/dashboard')} className="px-6 py-3 text-white border-[2.5px] border-gray-900 rounded-xl font-bold shadow-[4px_4px_0_#1a1d29]" style={{ background: '#00b395' }}>← Back</Link>
     </div>
   )
 
@@ -405,15 +414,15 @@ export default function LessonPage() {
               Start Level {levelsCompleted + 1} →
             </button>
           )}
-          <Link href={course ? `/courses/${course.id}` : '/dashboard'} className={`px-6 py-2.5 border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm ${hasNextLevel ? 'bg-white' : 'text-white'}`} style={!hasNextLevel ? { background: '#00b395' } : {}}>
+          <Link href={assignment?.class_id ? `/classes/${assignment.class_id}` : (course ? `/courses/${course.id}` : '/dashboard')} className={`px-6 py-2.5 border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm ${hasNextLevel ? 'bg-white' : 'text-white'}`} style={!hasNextLevel ? { background: '#00b395' } : {}}>
             Back to lesson tree
           </Link>
-          {isPracticeMode && !allPracticeMastered && (
+          {isPracticeMode && !allPracticeMastered && (!assignmentId || assignment?.allow_retry) && (
             <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm">
               Practice again
             </button>
           )}
-          {isPracticeMode && allPracticeMastered && (
+          {isPracticeMode && allPracticeMastered && (!assignmentId || assignment?.allow_retry) && (
             <button onClick={resetPracticeMastery} className="px-6 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm" style={{ background: '#00b395' }}>
               Redo all questions ↺
             </button>
@@ -430,7 +439,7 @@ export default function LessonPage() {
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#f6fbf8' }}>
       <div className="border-b-[2px] border-gray-900 px-4 py-2 flex items-center gap-4 flex-shrink-0" style={{ background: '#b4f1e7' }}>
-        <Link href={course ? `/courses/${course.id}` : '/dashboard'} className="w-8 h-8 border-2 border-gray-900 rounded-full bg-white flex items-center justify-center text-sm font-bold shadow-[2px_2px_0_#1a1d29]" aria-label="Close">✕</Link>
+        <Link href={assignment?.class_id ? `/classes/${assignment.class_id}` : (course ? `/courses/${course.id}` : '/dashboard')} className="w-8 h-8 border-2 border-gray-900 rounded-full bg-white flex items-center justify-center text-sm font-bold shadow-[2px_2px_0_#1a1d29]" aria-label="Close">✕</Link>
         <div className="flex-1 h-3 bg-white border-2 border-gray-900 rounded-full overflow-hidden">
           <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: '#00b395' }} />
         </div>
