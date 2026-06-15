@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import MyClasses from './MyClasses'
+import ClassCourseModal from './ClassCourseModal'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -18,6 +20,8 @@ export default function DashboardPage() {
   // UI state
   const [menuOpen, setMenuOpen] = useState(false)   // header "+" mini-bar
   const [pickerOpen, setPickerOpen] = useState(false) // self-study modal
+  const [classModalOpen, setClassModalOpen] = useState(false) // class-course modal
+  const [classRefresh, setClassRefresh] = useState(0) // bump to reload "Your classes"
   const [toast, setToast] = useState(null)
 
   const menuRef = useRef(null)
@@ -92,7 +96,7 @@ export default function DashboardPage() {
   }
 
   function openSelfStudy() { setMenuOpen(false); setPickerOpen(true) }
-  function openClassCourse() { setMenuOpen(false); showToast('Class courses are coming soon!') }
+  function openClassCourse() { setMenuOpen(false); setClassModalOpen(true) }
 
   if (loading) {
     return (
@@ -227,6 +231,9 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Your classes */}
+        <MyClasses refreshSignal={classRefresh} />
+
         {/* The two add-course buttons */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <button
@@ -248,6 +255,14 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {/* Class course modal */}
+      <ClassCourseModal
+        open={classModalOpen}
+        onClose={() => setClassModalOpen(false)}
+        onSuccess={() => setClassRefresh((n) => n + 1)}
+        catalog={catalog}
+      />
 
       {/* Self-study picker modal */}
       {pickerOpen && (
