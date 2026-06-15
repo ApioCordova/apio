@@ -391,7 +391,7 @@ export default function CustomAssignmentsPage() {
               <div className="border-[2.5px] border-gray-900 rounded-2xl p-4 bg-white">
                 <p className="text-xs font-mono tracking-widest uppercase text-gray-500 mb-3">// question bank</p>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  <select value={unitFilter} onChange={(e) => setUnitFilter(e.target.value)} className="border-2 border-gray-900 rounded-lg px-3 py-1.5 text-sm font-bold bg-white">
+                  <select value={unitFilter} onChange={(e) => setUnitFilter(e.target.value)} className="border-2 border-gray-900 rounded-lg px-1 py-1.5 text-sm font-bold bg-white">
                     <option value="all">All units</option>
                     {(course?.units || []).map((u) => <option key={u.id} value={u.id}>Unit {u.number}: {u.name}</option>)}
                   </select>
