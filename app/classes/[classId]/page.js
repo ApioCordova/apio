@@ -464,10 +464,6 @@ export default function ClassPage() {
               </label>
               <label className="block">
                 <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Title <span className="normal-case tracking-normal">(optional)</span></span>
-                <input value={assignTitle} onChange={(e) => setAssignTitle(e.target.value)} placeholder={assignType === 'problem_set' ? 'e.g. Problem set 1' : 'Defaults to the topic title'} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1" />
-              </label>
-              <label className="block">
-                <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Title <span className="normal-case tracking-normal">(optional)</span></span>
                 <input value={assignTitle} onChange={(e) => setAssignTitle(e.target.value)} placeholder={assignType === 'problem_set' ? 'e.g. Problem set 1' : 'Defaults to the lesson title'} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1" />
               </label>
               <label className="block">
