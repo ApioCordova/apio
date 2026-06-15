@@ -211,7 +211,7 @@ export default function ClassPage() {
   // assigned-lessons list and the title fallback resolve their title/icon.
   const libMeta = {}
   libLessons.forEach((l) => {
-    libMeta[l.id] = { title: l.title, icon: l.icon || '📚', label: '📚', unitName: 'My Library', maxLevels: l.max_levels }
+    libMeta[l.id] = { title: l.title, icon: l.icon || '📚', label: '📚', unitName: 'My Custom Assignments', maxLevels: l.max_levels }
   })
 
   async function createAssignment() {
