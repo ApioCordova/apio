@@ -600,7 +600,7 @@ export default function ClassPage() {
                     {libLessons.map((l) => <option key={l.id} value={l.id}>{l.icon ? `${l.icon} ` : ''}{l.title}</option>)}
                   </select>
                   {libLessons.length === 0 && (
-                    <span className="text-[11px] text-gray-500 mt-1 block">No published library lessons yet. Build and publish one in <span className="font-bold">My Library</span> first.</span>
+                    <span className="text-[11px] text-gray-500 mt-1 block">No published library lessons yet. Build and publish one in <span className="font-bold">My Custom Assignment</span> first.</span>
                   )}
                 </label>
               ) : (
