@@ -487,7 +487,6 @@ export default function ClassPage() {
             })}
           </div>
         )}
-        <p className="text-xs font-mono tracking-widest uppercase mb-3" style={{ color: '#8b5cf6' }}>// {view === 'past' ? 'past custom assignments' : 'custom assignments'}</p>
         {customs.length === 0 ? (
           <div className="border-[3px] border-dashed border-gray-400 rounded-2xl p-8 text-center mb-6">
             <p className="text-gray-600 font-bold">{view === 'past' ? 'No past custom assignments.' : 'No custom assignments yet.'}</p>
