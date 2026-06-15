@@ -30,10 +30,10 @@ export default function MyClasses({ refreshSignal = 0 }) {
 
       const [{ data: memberRows }, { data: taughtRows }] = await Promise.all([
         supabase.from('class_members')
-          .select('class:classes ( id, name, code, capacity, course_id, teacher_id )')
+          .select('class:classes ( id, name, code, capacity, course_id, teacher_id, end_date )')
           .eq('student_id', user.id),
         supabase.from('classes')
-          .select('id, name, code, capacity, course_id, teacher_id')
+          .select('id, name, code, capacity, course_id, teacher_id, end_date')
           .eq('teacher_id', user.id),
       ])
 
@@ -100,9 +100,8 @@ export default function MyClasses({ refreshSignal = 0 }) {
         {classes.map((cls) => {
           const tone = toneOf(cls.course)
           const courseTitle = cls.course?.title || 'Course'
-          const href = cls.role === 'teacher'
-            ? `/classes/${cls.id}`
-            : (cls.course_id ? `/courses/${cls.course_id}` : '#')
+          const href = `/classes/${cls.id}`
+          const ended = !!cls.end_date && new Date(cls.end_date).getTime() < Date.now()
           return (
             <div
               key={cls.id}
@@ -113,9 +112,14 @@ export default function MyClasses({ refreshSignal = 0 }) {
                 <div className="w-16 h-16 border-[2.5px] border-gray-900 rounded-xl flex items-center justify-center text-2xl font-black shadow-[2px_2px_0_#1a1d29]" style={{ background: tone, color: '#fff' }}>
                   {cls.course?.icon || '🏫'}
                 </div>
-                <span className={`px-2.5 py-1 rounded-full border-2 border-gray-900 text-[10px] font-black uppercase tracking-widest shadow-[2px_2px_0_#1a1d29] ${cls.role === 'teacher' ? 'text-white' : 'bg-white'}`} style={cls.role === 'teacher' ? { background: '#1a1d29' } : {}}>
-                  {cls.role === 'teacher' ? 'Teacher' : 'Class'}
-                </span>
+                <div className="flex items-center gap-2">
+                  {ended && (
+                    <span className="px-2.5 py-1 rounded-full border-2 border-gray-900 text-[10px] font-black uppercase tracking-widest bg-gray-200">Ended</span>
+                  )}
+                  <span className={`px-2.5 py-1 rounded-full border-2 border-gray-900 text-[10px] font-black uppercase tracking-widest shadow-[2px_2px_0_#1a1d29] ${cls.role === 'teacher' ? 'text-white' : 'bg-white'}`} style={cls.role === 'teacher' ? { background: '#1a1d29' } : {}}>
+                    {cls.role === 'teacher' ? 'Teacher' : 'Class'}
+                  </span>
+                </div>
               </div>
 
               <Link href={href} className="block group">

@@ -52,6 +52,7 @@ export default function ClassCourseModal({ open, onClose, onSuccess, catalog = [
       case 'full':    setError('That class is already full.'); break
       case 'already': setError(`You're already in ${data.class_name || 'that class'}.`); break
       case 'own':     setError("That's your own class — you're the teacher of it."); break
+      case 'ended':   setError('That class has ended and is no longer accepting students.'); break
       default:        setError(data?.message || 'Could not join. Please try again.')
     }
   }
@@ -202,12 +203,12 @@ export default function ClassCourseModal({ open, onClose, onSuccess, catalog = [
                 </select>
               </label>
               <label className="block">
-                <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Class size <span className="normal-case tracking-normal">(optional)</span></span>
+                <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Class size <span className="normal-case tracking-normal">(optional, max 50)</span></span>
                 <input
-                  type="number" min="1"
+                  type="number" min="1" max="50"
                   value={capacity}
                   onChange={(e) => setCapacity(e.target.value)}
-                  placeholder="Leave blank for unlimited"
+                  placeholder="Up to 50 students"
                   className={`${inputCls} mt-1`}
                 />
               </label>
