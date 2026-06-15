@@ -12,6 +12,8 @@ export default function LessonPage() {
   const lessonId = params.lessonId
   const isPracticeMode = searchParams.get('mode') === 'practice'
   const assignedSet = searchParams.get('set')
+  const assignmentId = searchParams.get('assignment')   // tags this run to a class assignment
+  const isReview = searchParams.get('review') === '1'    // read-only replay, no scoring
 
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -143,6 +145,13 @@ export default function LessonPage() {
     }
     loadData()
   }, [lessonId, router, isPracticeMode])
+  // Review mode: reveal the correct answer on each question, fully read-only.
+  useEffect(() => {
+    if (!isReview || items.length === 0) return
+    const it = items[itemIndex]
+    if (it && it._kind === 'question') { setSelected(it.answer); setChecked(true) }
+    else { setSelected(null); setChecked(false) }
+  }, [isReview, itemIndex, items])
 
   // ============ PRACTICE SESSION ============
   function startPracticeSession(sessionSize) {
@@ -209,6 +218,12 @@ export default function LessonPage() {
     } else {
       const questions = items.filter(i => i._kind === 'question')
       const finalCorrect = correctCount + (item._kind === 'question' && selected === item.answer ? 1 : 0)
+      const acc = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 100
+
+      // In review mode we never write anything — just exit back to the class.
+      if (isReview) { router.back(); return }
+
+      let assignmentDone = isPracticeMode  // problem sets finish in a single session
 
       if (!isPracticeMode) {
         const score = questions.length > 0 ? finalCorrect / questions.length : 1
@@ -227,7 +242,19 @@ export default function LessonPage() {
         }, { onConflict: 'user_id,lesson_id' })
 
         setLevelsCompleted(newLevelsCompleted)
+        assignmentDone = newLevelsCompleted >= maxLevels  // only lock once the whole lesson is done
       }
+
+      // Lock the assignment to review-only and stamp the final accuracy.
+      if (assignmentId && assignmentDone) {
+        await supabase.from('assignment_submissions').upsert({
+          assignment_id: assignmentId,
+          student_id: user.id,
+          accuracy: acc,
+          completed_at: new Date().toISOString(),
+        }, { onConflict: 'assignment_id,student_id', ignoreDuplicates: true })
+      }
+
       setCompleted(true)
     }
   }
@@ -483,8 +510,8 @@ export default function LessonPage() {
           ) : (
             <div className={`border-t-[3px] border-gray-900 px-4 py-3 flex items-center justify-between gap-3 flex-wrap flex-shrink-0 ${isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
               <div className="flex-1 min-w-0">
-                <h3 className={`text-lg font-black mb-0.5 ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
-                  {isCorrect ? 'Excellent.' : 'Not quite.'}
+                <h3 className={`text-lg font-black mb-0.5 ${isReview ? 'text-gray-900' : isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+                  {isReview ? 'Correct answer' : isCorrect ? 'Excellent.' : 'Not quite.'}
                 </h3>
                 <p className="text-xs text-gray-700 leading-relaxed">{item.explanation}</p>
               </div>

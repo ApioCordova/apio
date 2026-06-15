@@ -37,6 +37,7 @@ export default function ClassPage() {
   const [lessonMeta, setLessonMeta] = useState({})    // lessonId -> { title, icon, label, unitName, maxLevels }
   const [assignments, setAssignments] = useState([])
   const [progressMap, setProgressMap] = useState({})  // student: lessonId -> { levels_completed, current_level }
+  const [submissionMap, setSubmissionMap] = useState({})   // assignmentId -> { accuracy, completed_at }
   const [roster, setRoster] = useState([])            // teacher
   const [rosterOpen, setRosterOpen] = useState(false)
   const [view, setView] = useState('current')         // teacher toggle
@@ -133,6 +134,23 @@ export default function ClassPage() {
     document.addEventListener('mousedown', onClick)
     return () => document.removeEventListener('mousedown', onClick)
   }, [])
+  useEffect(() => {
+    async function loadSubs() {
+      if (role !== 'student' || assignments.length === 0) return
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const ids = assignments.map((a) => a.id)
+      const { data } = await supabase
+        .from('assignment_submissions')
+        .select('assignment_id, accuracy, completed_at')
+        .eq('student_id', user.id)
+        .in('assignment_id', ids)
+      const map = {}
+      ;(data || []).forEach((s) => { map[s.assignment_id] = s })
+      setSubmissionMap(map)
+    }
+    loadSubs()
+  }, [role, assignments])
 
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2200) }
 
@@ -260,9 +278,38 @@ export default function ClassPage() {
     const StudentItem = ({ a, isLocked }) => {
       const m = lessonMeta[a.lesson_id]
       const title = a.title || m?.title || (a.type === 'problem_set' ? 'Problem set' : 'Lesson')
-      const href = a.type === 'problem_set' ? `/lessons/${a.lesson_id}?mode=practice&set=${encodeURIComponent(a.practice_set || '')}` : `/lessons/${a.lesson_id}`
+      const sub = submissionMap[a.id]
+      const isDone = !!sub
       const prog = progressMap[a.lesson_id]
       const progText = prog ? `Level ${Math.min(prog.current_level || 1, m?.maxLevels || prog.current_level || 1)}${m?.maxLevels ? ` / ${m.maxLevels}` : ''}` : 'Not started'
+
+      // Tag the run with this assignment id so completion is recorded against it.
+      const base = a.type === 'problem_set'
+        ? `/lessons/${a.lesson_id}?mode=practice&set=${encodeURIComponent(a.practice_set || '')}`
+        : `/lessons/${a.lesson_id}?`
+      const sep = base.endsWith('?') ? '' : '&'
+      const liveHref = `${base}${sep}assignment=${a.id}`
+      const reviewHref = `${liveHref}&review=1`
+
+      // Completed → gold, locked to review-only, shows the final accuracy.
+      if (isDone) {
+        return (
+          <Link key={a.id} href={reviewHref}>
+            <div className="flex items-center gap-3 flex-wrap border-[3px] border-gray-900 rounded-2xl p-4 bg-[#fffbeb] shadow-[4px_4px_0_#fbbf24] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#fbbf24] transition-all">
+              <span className="w-12 h-12 shrink-0 border-2 border-gray-900 rounded-xl flex items-center justify-center text-xl" style={{ background: '#fbbf24' }}>🏆</span>
+              <div className="min-w-0 flex-1">
+                <p className="font-black tracking-tight truncate">{title}</p>
+                <p className="text-xs font-mono text-gray-600">Completed · {a.type === 'problem_set' ? 'Problem set' : 'Lesson'}</p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="px-3 py-1 rounded-xl border-2 border-gray-900 font-black text-sm shadow-[2px_2px_0_#1a1d29]" style={{ background: '#fbbf24' }}>{sub.accuracy}%</span>
+                <span className="text-sm font-black text-gray-900">Review →</span>
+              </div>
+            </div>
+          </Link>
+        )
+      }
+
       const inner = (
         <div className={`flex items-center gap-3 flex-wrap border-[3px] border-gray-900 rounded-2xl p-4 shadow-[4px_4px_0_#1a1d29] ${isLocked ? 'bg-gray-100 opacity-70' : 'bg-white hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1a1d29] transition-all'}`}>
           <span className="w-12 h-12 shrink-0 border-2 border-gray-900 rounded-xl flex items-center justify-center text-xl" style={{ background: `${tone}22` }}>{a.type === 'problem_set' ? '✏️' : (m?.icon || '📘')}</span>
@@ -273,7 +320,7 @@ export default function ClassPage() {
           {isLocked ? <span className="text-xs font-mono font-bold text-gray-500">🔒 Closed</span> : <span className="text-sm font-black" style={{ color: '#00b395' }}>Start →</span>}
         </div>
       )
-      return isLocked ? <div key={a.id}>{inner}</div> : <Link key={a.id} href={href}>{inner}</Link>
+      return isLocked ? <div key={a.id}>{inner}</div> : <Link key={a.id} href={liveHref}>{inner}</Link>
     }
 
     return (
