@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -25,7 +25,7 @@ function accuracyColor(pct) {
 
 const LETTERS = 'ABCDEFGH'
 
-export default function PerformancePage() {
+function PerformanceInner() {
   const router = useRouter()
   const { classId } = useParams()
   const searchParams = useSearchParams()
@@ -277,5 +277,13 @@ export default function PerformancePage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function PerformancePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center" style={{ background: '#f6fbf8' }}><p className="text-gray-600 font-mono text-sm">Loading…</p></div>}>
+      <PerformanceInner />
+    </Suspense>
   )
 }
