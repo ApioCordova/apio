@@ -333,13 +333,14 @@ export default function AdminContentPage() {
     await loadItems(selectedLessonId)
   }
 
-  async function toggleQuestionPool(questionId, currentPool) {
-    const newPool = currentPool === 'lesson' ? 'practice' : 'lesson'
-    const update = { pool: newPool }
-    if (newPool === 'practice') update.level_id = null
-    else update.level_id = selectedLevelId
-    await supabase.from('questions').update(update).eq('id', questionId)
-    showToast(`Moved to ${newPool} pool`); await loadItems(selectedLessonId)
+  async function setQuestionPool(questionId, newPool) {
+    if (newPool === 'lesson' && !selectedLevelId) { showToast('Select a level first to move into a lesson'); return }
+    // only lesson questions live inside a level; practice & problem_set are level-less
+    const update = { pool: newPool, level_id: newPool === 'lesson' ? selectedLevelId : null }
+    const { error } = await supabase.from('questions').update(update).eq('id', questionId)
+    if (error) { showToast('Failed: ' + error.message); return }
+    const label = newPool === 'problem_set' ? 'problem set' : newPool
+    showToast(`Moved to ${label} pool`); await loadItems(selectedLessonId)
   }
 
   async function deleteItem(item) {
@@ -377,6 +378,9 @@ export default function AdminContentPage() {
   } else if (contentView === 'practice') {
     viewFilteredItems = items.filter(i => i._kind === 'question' && i.pool === 'practice')
   }
+  else if (contentView === 'problem_set') {
+    viewFilteredItems = items.filter(i => i._kind === 'question' && i.pool === 'problem_set')
+  }
 
   const filteredItems = statusFilter === 'all' ? viewFilteredItems : viewFilteredItems.filter(i => i.status === statusFilter)
 
@@ -384,6 +388,7 @@ export default function AdminContentPage() {
   const levelQuestionCount = currentLevelItems.filter(i => i._kind === 'question' && i.pool === 'lesson').length
   const levelReadingCount = currentLevelItems.filter(i => i._kind === 'reading').length
   const practiceQuestionCount = items.filter(i => i._kind === 'question' && i.pool === 'practice').length
+  const problemSetQuestionCount = items.filter(i => i._kind === 'question' && i.pool === 'problem_set').length
 
   return (
     <>
@@ -712,7 +717,7 @@ export default function AdminContentPage() {
                       onApprove={() => approveContent(item._kind === 'question' ? 'questions' : 'readings', item.id)}
                       onDeny={() => denyContent(item._kind === 'question' ? 'questions' : 'readings', item.id)}
                       onMoveUp={() => moveItem(item, 'up')} onMoveDown={() => moveItem(item, 'down')}
-                      onTogglePool={() => toggleQuestionPool(item.id, item.pool)}
+                      onSetPool={(p) => setQuestionPool(item.id, p)}
                       role={currentRole} currentUserId={currentUser?.id}
                       isSelected={selectedItemIds.has(item.id)}
                       onSelect={() => toggleSelection(item.id)}
@@ -857,7 +862,7 @@ function LessonMetaEditor({ lesson, onUpdate }) {
   )
 }
 
-function ItemCard({ index, item, isFirst, isLast, onEdit, onDelete, onStatusChange, onSendForApproval, onApprove, onDeny, onMoveUp, onMoveDown, onTogglePool, role, currentUserId, isSelected, onSelect }) {
+function ItemCard({ index, item, isFirst, isLast, onEdit, onDelete, onStatusChange, onSendForApproval, onApprove, onDeny, onMoveUp, onMoveDown, onSetPool, role, currentUserId, isSelected, onSelect }) {
   if (item._kind === 'question') {
     return (
       <div className={`border-2 border-gray-900 rounded-xl p-4 shadow-[3px_3px_0_#1a1d29] flex gap-3 ${isSelected ? 'bg-yellow-50 border-yellow-500' : 'bg-white'}`}>
@@ -870,7 +875,7 @@ function ItemCard({ index, item, isFirst, isLast, onEdit, onDelete, onStatusChan
               )}
               <p className="text-xs font-mono tracking-widest uppercase font-bold flex items-center gap-2" style={{ color: '#00b395' }}>
                 📝 Question — item {index + 1} <StatusDot status={item.status} />
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900" style={{ background: item.pool === 'practice' ? '#fbbf24' : '#00b395', color: item.pool === 'practice' ? '#1a1d29' : 'white' }}>{item.pool === 'practice' ? 'PRACTICE' : 'LESSON'}</span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900" style={{ background: item.pool === 'practice' ? '#fbbf24' : item.pool === 'problem_set' ? '#8b5cf6' : '#00b395', color: item.pool === 'practice' ? '#1a1d29' : 'white' }}>{item.pool === 'practice' ? 'PRACTICE' : item.pool === 'problem_set' ? 'PROBLEM SET' : 'LESSON'}</span>
                 {item.difficulty && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border border-gray-900 text-white" style={{ background: item.difficulty === 'easy' ? '#22c55e' : item.difficulty === 'medium' ? '#eab308' : item.difficulty === 'difficult' ? '#f97316' : '#ef4444' }}>
                     {item.difficulty === 'very_difficult' ? 'VERY HARD' : item.difficulty.toUpperCase()}
@@ -884,7 +889,9 @@ function ItemCard({ index, item, isFirst, isLast, onEdit, onDelete, onStatusChan
               </p>
             </div>
             <div className="flex gap-1.5 flex-wrap items-center">
-              <button onClick={onTogglePool} className="px-3 py-1 bg-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">↔ {item.pool === 'practice' ? 'To lesson' : 'To practice'}</button>
+              {['lesson', 'practice', 'problem_set'].filter(p => p !== item.pool).map(p => (
+                <button key={p} onClick={() => onSetPool(p)} className="px-3 py-1 bg-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">↔ To {p === 'problem_set' ? 'problem set' : p}</button>
+              ))}
               <StatusControls status={item.status} onChange={onStatusChange} onSendForApproval={onSendForApproval} onApprove={onApprove} onDeny={onDeny} role={role} isOwnContent={item.created_by === currentUserId} />
               <button onClick={onEdit} className="px-3 py-1 border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]" style={{ background: '#00b395', color: 'white' }}>Edit</button>
               <button onClick={onDelete} className="px-3 py-1 bg-red-500 text-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">Delete</button>

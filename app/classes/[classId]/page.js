@@ -153,7 +153,7 @@ export default function ClassPage() {
         const { data } = await supabase.from('questions')
           .select('practice_set')
           .eq('lesson_id', assignLessonId)
-          .eq('pool', 'practice')
+          .eq('pool', 'problem_set')
           .not('practice_set', 'is', null)
         
         const uniqueSets = [...new Set(data?.map(q => q.practice_set).filter(Boolean) || [])]
