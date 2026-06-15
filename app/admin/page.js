@@ -414,7 +414,7 @@ export default function AdminContentPage() {
               {editDraft._kind === 'question' ? (
                 <>
                   <Field label="Question stem">
-                    <textarea value={editDraft.stem || ''} onChange={(e) => setEditDraft({ ...editDraft, stem: e.target.value })} rows={4} className="w-full p-3 border-2 border-gray-900 rounded-lg bg-white text-base" autoFocus />
+                    <RichEditor value={editDraft.stem || ''} onChange={(html) => setEditDraft({ ...editDraft, stem: html })} />
                   </Field>
                   <div className="mt-6">
                     <p className="text-xs font-mono uppercase tracking-widest text-gray-700 font-bold mb-3">Answer choices — click to mark correct</p>
@@ -482,7 +482,7 @@ export default function AdminContentPage() {
                   </div>
                   <div className="mt-6">
                     <Field label="Explanation">
-                      <textarea value={editDraft.explanation || ''} onChange={(e) => setEditDraft({ ...editDraft, explanation: e.target.value })} rows={4} className="w-full p-3 border-2 border-gray-900 rounded-lg bg-white text-base" />
+                      <RichEditor value={editDraft.explanation || ''} onChange={(html) => setEditDraft({ ...editDraft, explanation: html })} />
                     </Field>
                   </div>
                 </>

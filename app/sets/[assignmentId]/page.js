@@ -176,8 +176,8 @@ export default function CustomSetPage() {
       <div className="flex-1 flex flex-col">
         <div className="flex-1 max-w-2xl w-full mx-auto p-5 md:p-8">
           <p className="text-xs font-mono tracking-widest uppercase mb-3" style={{ color: '#00b395' }}>// {assignment.title}</p>
-          <h2 className="text-2xl font-black tracking-tight mb-6 leading-snug">{item.stem}</h2>
-
+          <div className="text-2xl font-black tracking-tight mb-6 leading-snug prose prose-xl max-w-none prose-headings:font-black prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900" dangerouslySetInnerHTML={{ __html: item.stem || '' }} />
+          {item.explanation && <div className="text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900" dangerouslySetInnerHTML={{ __html: item.explanation }} />}
           <div className="flex flex-col gap-3">
             {item.choices.map((c, i) => {
               const isAns = i === item.answer

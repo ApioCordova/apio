@@ -138,7 +138,8 @@ export default function PendingReviewPage() {
                 {/* Content preview */}
                 {item._kind === 'question' ? (
                   <div className="mb-4">
-                    <p className="font-bold text-sm mb-3 leading-snug">{item.stem}</p>
+                    <div className="font-bold text-sm mb-3 leading-snug prose prose-sm max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900" dangerouslySetInnerHTML={{ __html: item.stem || '' }} />
+                    <div className="text-xs text-gray-700 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: item.explanation || '' }} />
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 text-xs">
                       {item.choices?.map((c, i) => (
                         <div key={i} className={`px-2 py-1.5 rounded flex items-center gap-1.5 ${i === item.answer ? 'bg-green-100 text-green-900 font-bold' : 'bg-gray-50 text-gray-700'}`}>

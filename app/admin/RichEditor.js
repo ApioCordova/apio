@@ -12,6 +12,7 @@ import { TableRow } from '@tiptap/extension-table-row'
 import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { useEffect, useState, useRef } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function RichEditor({ value, onChange }) {
   const editor = useEditor({
@@ -68,7 +69,8 @@ export default function RichEditor({ value, onChange }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])
-
+  const fileInputRef = useRef(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
   if (!editor) return <p className="text-gray-500 text-sm p-4">Loading editor...</p>
 
   // ============ TOOLBAR HANDLERS ============
@@ -85,8 +87,27 @@ export default function RichEditor({ value, onChange }) {
   }
 
   function addImage() {
-    const url = window.prompt('Image URL (paste a link to a hosted image)')
-    if (url) editor.chain().focus().setImage({ src: url }).run()
+    fileInputRef.current?.click()
+  }
+
+  async function handleImageUpload(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-picking the same file
+    if (!file) return
+    if (!file.type.startsWith('image/')) { window.alert('Please choose an image file.'); return }
+    if (file.size > 5 * 1024 * 1024) { window.alert('Image is over 5 MB — please pick a smaller one.'); return }
+    setUploadingImage(true)
+    try {
+      const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error } = await supabase.storage.from('content-images')
+        .upload(path, file, { cacheControl: '3600', upsert: false })
+      if (error) { window.alert('Upload failed: ' + error.message); return }
+      const { data } = supabase.storage.from('content-images').getPublicUrl(path)
+      if (data?.publicUrl) editor.chain().focus().setImage({ src: data.publicUrl }).run()
+    } finally {
+      setUploadingImage(false)
+    }
   }
 
   function addYoutube() {
@@ -99,6 +120,7 @@ export default function RichEditor({ value, onChange }) {
 
   return (
     <div className="border-2 border-gray-900 rounded-lg overflow-hidden bg-white">
+     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
       {/* Toolbar */}
       <div className="border-b-2 border-gray-900 bg-gray-50 p-2 flex flex-wrap gap-1 items-center">
         <ToolbarGroup>
@@ -223,8 +245,8 @@ export default function RichEditor({ value, onChange }) {
           <ToolbarBtn onClick={addLink} active={editor.isActive('link')} title="Insert link">
             🔗 Link
           </ToolbarBtn>
-          <ToolbarBtn onClick={addImage} title="Insert image">
-            🖼 Image
+          <ToolbarBtn onClick={addImage} disabled={uploadingImage} title="Upload an image from your computer">
+            🖼 {uploadingImage ? 'Uploading…' : 'Image'}
           </ToolbarBtn>
           <ToolbarBtn onClick={addYoutube} title="Insert YouTube video">
             ▶ Video

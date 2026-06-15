@@ -554,11 +554,10 @@ export default function LibraryPage() {
             <div className="p-5 space-y-4">
               {draft._kind === 'question' ? (
                 <>
-                  <label className="block">
+                  <div>
                     <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Question</span>
-                    <textarea value={draft.stem} onChange={(e) => setDraft({ ...draft, stem: e.target.value })} rows={2}
-                      className="w-full border-2 border-gray-900 rounded-lg px-3 py-2 mt-1 font-medium" />
-                  </label>
+                    <div className="mt-1"><RichEditor value={draft.stem || ''} onChange={(html) => setDraft({ ...draft, stem: html })} /></div>
+                  </div>
 
                   <div>
                     <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Choices (pick the correct one)</span>
