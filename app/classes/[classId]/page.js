@@ -158,7 +158,7 @@ export default function ClassPage() {
         
         const uniqueSets = [...new Set(data?.map(q => q.practice_set).filter(Boolean) || [])]
         setAvailableSets(uniqueSets)
-        setAssignSet(uniqueSets[0] || '')
+        setAssignSet('')   // default = entire practice pool
       } else {
         setAvailableSets([])
         setAssignSet('')
@@ -175,7 +175,7 @@ export default function ClassPage() {
     const { error } = await supabase.from('class_assignments').insert({
       class_id: classId, type: assignType, lesson_id: assignLessonId,
       title: assignTitle.trim() || fallback, due_date: fromLocalInput(assignDue), sort_order: assignments.length + 1,
-      practice_set: assignType === 'problem_set' ? assignSet : null
+      practice_set: assignType === 'problem_set' && assignSet ? assignSet : null
     })
     setSaving(false)
     if (error) { showToast('Could not assign: ' + error.message); return }
@@ -485,6 +485,22 @@ export default function ClassPage() {
                   ))}
                 </select>
               </label>
+
+              {assignType === 'problem_set' && assignLessonId && (
+                <label className="block">
+                  <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Practice set</span>
+                  <select value={assignSet} onChange={(e) => setAssignSet(e.target.value)} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1 bg-white">
+                    <option value="">All practice questions in this topic</option>
+                    {availableSets.map((s) => <option key={s} value={s}>Set: {s}</option>)}
+                  </select>
+                  <span className="text-[11px] text-gray-500 mt-1 block">
+                    {availableSets.length > 0
+                      ? 'Leave on "All practice questions" to assign the whole pool, or pick a named set.'
+                      : 'This topic has no named sets — the whole practice pool will be assigned.'}
+                  </span>
+                </label>
+              )}
+
               <label className="block">
                 <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Title <span className="normal-case tracking-normal">(optional)</span></span>
                 <input value={assignTitle} onChange={(e) => setAssignTitle(e.target.value)} placeholder={assignType === 'problem_set' ? 'e.g. Problem set 1' : 'Defaults to the lesson title'} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1" />
