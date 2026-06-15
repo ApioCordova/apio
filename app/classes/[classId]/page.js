@@ -409,7 +409,7 @@ export default function ClassPage() {
 
         <div className="flex flex-wrap gap-3 mb-8">
           <button onClick={() => openAssign('lesson')} className={btn} style={{ background: '#00b395', color: '#fff' }}>➕ Assign new</button>
-          <button onClick={() => showToast('Student performance is coming soon.')} className={btn}>📊 Student performance</button>
+          <button onClick={() => router.push(`/classes/${classId}/performance`)} className={btn}>📊 Student performance</button>
           <button onClick={() => setView(view === 'past' ? 'current' : 'past')} className={btn} style={view === 'past' ? { background: '#1a1d29', color: '#fff' } : {}}>🗂 {view === 'past' ? 'Back to current' : 'Past assignments'}</button>
         </div>
 

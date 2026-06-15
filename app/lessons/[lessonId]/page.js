@@ -179,16 +179,16 @@ export default function LessonPage() {
 
   const item = items[itemIndex]
 
-  async function logAttempt(questionId, wasCorrect) {
-    await supabase.from('question_attempts').insert({ user_id: user.id, question_id: questionId, was_correct: wasCorrect })
-  }
+  async function logAttempt(questionId, wasCorrect, selectedIndex) {
+  await supabase.from('question_attempts').insert({ user_id: user.id, question_id: questionId, was_correct: wasCorrect, selected_index: selectedIndex })
+}
 
   async function onCheck() {
     if (selected === null) return
     setChecked(true)
     const wasCorrect = selected === item.answer
     if (wasCorrect) setCorrectCount(c => c + 1)
-    await logAttempt(item.id, wasCorrect)
+    await logAttempt(item.id, wasCorrect, selected)
 
     // Practice mode: persist mastery. Correct = mastered (box 5), wrong = stays in pool (box 1).
     if (isPracticeMode) {
