@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import CustomBuilder from './CustomBuilder'
 
 const toneOf = (c) => {
   const t = c?.tone
@@ -54,6 +55,7 @@ export default function ClassPage() {
   const [assignTitle, setAssignTitle] = useState('')
   const [assignRetry, setAssignRetry] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [customOpen, setCustomOpen] = useState(false)
 
   // teacher: settings modal
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -286,13 +288,13 @@ export default function ClassPage() {
       const progText = prog ? `Level ${Math.min(prog.current_level || 1, m?.maxLevels || prog.current_level || 1)}${m?.maxLevels ? ` / ${m.maxLevels}` : ''}` : 'Not started'
 
       // Tag the run with this assignment id so completion is recorded against it.
+      const isCustom = a.type === 'custom'
       const base = a.type === 'problem_set'
         ? `/lessons/${a.lesson_id}?mode=practice&set=${encodeURIComponent(a.practice_set || '')}`
         : `/lessons/${a.lesson_id}?`
       const sep = base.endsWith('?') ? '' : '&'
-      const liveHref = `${base}${sep}assignment=${a.id}`
-      const reviewHref = `${liveHref}&review=1`
-      const href = a.type === 'problem_set' ? `/lessons/${a.lesson_id}?mode=practice&set=${encodeURIComponent(a.practice_set || '')}&assignment=${a.id}` : `/lessons/${a.lesson_id}?assignment=${a.id}`
+      const liveHref = isCustom ? `/sets/${a.id}` : `${base}${sep}assignment=${a.id}`
+      const reviewHref = isCustom ? `/sets/${a.id}?review=1` : `${liveHref}&review=1`
 
       // Completed → gold, locked to review-only, shows the final accuracy.
       if (isDone) {
@@ -302,7 +304,7 @@ export default function ClassPage() {
               <span className="w-12 h-12 shrink-0 border-2 border-gray-900 rounded-xl flex items-center justify-center text-xl" style={{ background: '#fbbf24' }}>🏆</span>
               <div className="min-w-0 flex-1">
                 <p className="font-black tracking-tight truncate">{title}</p>
-                <p className="text-xs font-mono text-gray-600">Completed · {a.type === 'problem_set' ? 'Problem set' : 'Lesson'}</p>
+                <p className="text-xs font-mono text-gray-600">Completed · {a.type === 'problem_set' ? 'Problem set' : a.type === 'custom' ? 'Custom' : 'Lesson'}</p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <span className="px-3 py-1 rounded-xl border-2 border-gray-900 font-black text-sm shadow-[2px_2px_0_#1a1d29]" style={{ background: '#fbbf24' }}>{sub.accuracy}%</span>
@@ -315,7 +317,7 @@ export default function ClassPage() {
 
       const inner = (
         <div className={`flex items-center gap-3 flex-wrap border-[3px] border-gray-900 rounded-2xl p-4 shadow-[4px_4px_0_#1a1d29] ${isLocked ? 'bg-gray-100 opacity-70' : 'bg-white hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#1a1d29] transition-all'}`}>
-          <span className="w-12 h-12 shrink-0 border-2 border-gray-900 rounded-xl flex items-center justify-center text-xl" style={{ background: `${tone}22` }}>{a.type === 'problem_set' ? '✏️' : (m?.icon || '📘')}</span>
+          <span className="w-12 h-12 shrink-0 border-2 border-gray-900 rounded-xl flex items-center justify-center text-xl" style={{ background: `${tone}22` }}>{a.type === 'problem_set' ? '✏️' : a.type === 'custom' ? '🛠' : (m?.icon || '📘')}</span>
           <div className="min-w-0 flex-1">
             <p className="font-black tracking-tight truncate">{title}</p>
             <p className="text-xs font-mono text-gray-500">{isLocked ? `Closed · was due ${formatDue(a.due_date)}` : `Due ${formatDue(a.due_date)} · ${progText}`}</p>
@@ -367,6 +369,7 @@ export default function ClassPage() {
   const inView = (a) => (view === 'past' ? (ended || isPast(a.due_date)) : !(ended || isPast(a.due_date)))
   const lessons = assignments.filter((a) => a.type === 'lesson' && inView(a))
   const problemSets = assignments.filter((a) => a.type === 'problem_set' && inView(a))
+  const customs = assignments.filter((a) => a.type === 'custom' && inView(a))
   const btn = 'flex items-center gap-2 px-4 py-2.5 border-[2.5px] border-gray-900 rounded-xl font-bold text-sm bg-white shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all'
 
   return (
@@ -453,7 +456,33 @@ export default function ClassPage() {
             })}
           </div>
         )}
-
+        {/* Custom assignments */}
+        <p className="text-xs font-mono tracking-widest uppercase mb-3" style={{ color: '#8b5cf6' }}>// {view === 'past' ? 'past custom assignments' : 'custom assignments'}</p>
+        {customs.length === 0 ? (
+          <div className="border-[3px] border-dashed border-gray-400 rounded-2xl p-8 text-center mb-6">
+            <p className="text-gray-600 font-bold">{view === 'past' ? 'No past custom assignments.' : 'No custom assignments yet.'}</p>
+            {view !== 'past' && <p className="text-sm text-gray-500 mt-1">Build one from &ldquo;Assign new&rdquo; &rarr; Custom assignment.</p>}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 mb-6">
+            {customs.map((a) => {
+              const closed = ended || isPast(a.due_date)
+              return (
+                <div key={a.id} className="flex items-center gap-3 flex-wrap border-[3px] border-gray-900 rounded-2xl p-4 bg-white shadow-[4px_4px_0_#1a1d29]">
+                  <span className="w-12 h-12 shrink-0 border-2 border-gray-900 rounded-xl flex items-center justify-center text-xl" style={{ background: '#ede9fe' }}>🛠</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-black tracking-tight truncate">{a.title || 'Custom assignment'}</p>
+                    <p className="text-xs font-mono text-gray-500">{closed ? `Due ${formatDue(a.due_date)} · closed` : `Due ${formatDue(a.due_date)}`}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button onClick={() => setCustomOpen(true)} className="px-3 py-1.5 border-2 border-gray-900 rounded-lg text-xs font-bold bg-white shadow-[2px_2px_0_#1a1d29]">Manage</button>
+                    <button onClick={() => removeAssignment(a.id, a.title || 'custom assignment')} className="px-3 py-1.5 border-2 border-gray-900 rounded-lg text-xs font-bold text-red-600 bg-white shadow-[2px_2px_0_#1a1d29]">Delete</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
         {/* Problem sets assigned */}
         <p className="text-xs font-mono tracking-widest uppercase mb-3" style={{ color: '#00b395' }}>// {view === 'past' ? 'past assignments' : 'assignments assigned'}</p>
         {problemSets.length === 0 ? (
@@ -496,7 +525,15 @@ export default function ClassPage() {
         )}
       </div>
 
-      {/* Assign modal */}
+      {customOpen && (
+        <CustomBuilder
+          classId={classId}
+          course={course}
+          tone={tone}
+          onClose={() => setCustomOpen(false)}
+          onSaved={reloadAssignments}
+        />
+      )}
       {assignOpen && (
         <div className="fixed inset-0 z-[150] flex items-start justify-center p-4 md:p-8 overflow-y-auto" style={{ background: 'rgba(26,29,41,0.55)' }} onClick={() => setAssignOpen(false)}>
           <div className="w-full max-w-lg bg-white border-[3px] border-gray-900 rounded-2xl shadow-[8px_8px_0_#1a1d29] my-auto" onClick={(e) => e.stopPropagation()}>
@@ -524,6 +561,14 @@ export default function ClassPage() {
                 >
                   <span>🎯 Problem set</span>
                   <span className={`text-[10px] font-bold uppercase tracking-widest ${assignType === 'problem_set' ? 'text-teal-100' : 'text-gray-500'}`}>From Practice Pool</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAssignOpen(false); setCustomOpen(true) }}
+                  className="col-span-2 px-4 py-3 border-[2.5px] border-gray-900 rounded-xl font-black text-sm shadow-[3px_3px_0_#1a1d29] bg-white flex flex-col items-center gap-1"
+                >
+                  <span>🛠 Custom assignment</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Build your own · pick &amp; write questions</span>
                 </button>
               </div>
               <label className="block">

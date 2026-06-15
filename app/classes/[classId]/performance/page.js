@@ -140,8 +140,8 @@ function PerformanceInner() {
                         <p className="font-black tracking-tight truncate">{a.title}</p>
                         <p className="text-xs font-mono text-gray-500 mt-0.5">{formatDue(a.due_date)}</p>
                       </div>
-                      <span className="shrink-0 px-2.5 py-1 rounded-full border-2 border-gray-900 text-[10px] font-black uppercase tracking-widest text-white" style={{ background: a.type === 'problem_set' ? '#8b5cf6' : TEAL }}>
-                        {a.type === 'problem_set' ? 'Problem set' : 'Lesson'}
+                      <span className="shrink-0 px-2.5 py-1 rounded-full border-2 border-gray-900 text-[10px] font-black uppercase tracking-widest text-white" style={{ background: a.type === 'problem_set' ? '#8b5cf6' : a.type === 'custom' ? '#f59e0b' : TEAL }}>
+                        {a.type === 'problem_set' ? 'Problem set' : a.type === 'custom' ? 'Custom' : 'Lesson'}
                       </span>
                     </div>
 
