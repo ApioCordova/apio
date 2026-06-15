@@ -100,7 +100,9 @@ export default function MyClasses({ refreshSignal = 0 }) {
         {classes.map((cls) => {
           const tone = toneOf(cls.course)
           const courseTitle = cls.course?.title || 'Course'
-          const href = cls.course_id ? `/courses/${cls.course_id}` : '#'
+          const href = cls.role === 'teacher'
+            ? `/classes/${cls.id}`
+            : (cls.course_id ? `/courses/${cls.course_id}` : '#')
           return (
             <div
               key={cls.id}
