@@ -532,7 +532,7 @@ export default function LessonPage() {
                 <h3 className={`text-lg font-black mb-0.5 ${isReview ? 'text-gray-900' : isCorrect ? 'text-green-800' : 'text-red-800'}`}>
                   {isReview ? 'Correct answer' : isCorrect ? 'Excellent.' : 'Not quite.'}
                 </h3>
-                <p className="text-xs text-gray-700 leading-relaxed">{item.explanation}</p>
+                <p className="text-xs text-gray-700 leading-relaxed">{((item.choice_explanations || [])[selected]) || item.explanation}</p>
               </div>
               <button onClick={onContinue} className={`px-7 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm flex-shrink-0 ${isCorrect ? 'bg-green-600' : 'bg-gray-900'}`}>
                 {itemIndex + 1 < items.length ? 'Continue' : 'Finish'}

@@ -102,8 +102,9 @@ export default function AdminContentPage() {
   }
 
   async function saveAndCloseQuestion() {
+    const ce = (editDraft.choices || []).map((_, i) => (editDraft.choice_explanations || [])[i] || '')
     const { error } = await supabase.from('questions').update({
-      stem: editDraft.stem, choices: editDraft.choices, answer: editDraft.answer, explanation: editDraft.explanation, difficulty: editDraft.difficulty || null, in_problem_set: !!editDraft.in_problem_set,
+      stem: editDraft.stem, choices: editDraft.choices, choice_explanations: ce, answer: editDraft.answer, explanation: editDraft.explanation, difficulty: editDraft.difficulty || null, in_problem_set: !!editDraft.in_problem_set,
     }).eq('id', editDraft.id)
     if (error) { showToast('Save failed: ' + error.message); return }
     showToast('✓ Question saved'); closeEditor(); await loadItems(selectedLessonId)
@@ -288,6 +289,7 @@ export default function AdminContentPage() {
     const { data, error } = await supabase.from('questions').insert({
       lesson_id: selectedLessonId, stem: 'Enter your question here.',
       choices: ['Option A', 'Option B', 'Option C', 'Option D'],
+      choice_explanations: ['', '', '', ''],
       answer: 0, explanation: 'Why this answer is correct.',
       sort_order: sortOrder, status: 'draft', pool, created_by: currentUser?.id,
       level_id: levelId, difficulty: null,
@@ -419,15 +421,24 @@ export default function AdminContentPage() {
                   <div className="mt-6">
                     <p className="text-xs font-mono uppercase tracking-widest text-gray-700 font-bold mb-3">Answer choices — click to mark correct</p>
                     {editDraft.choices.map((choice, i) => (
-                      <div key={i} className="flex gap-3 items-center mb-3">
-                        <input type="radio" name="correct-modal" checked={editDraft.answer === i} onChange={() => setEditDraft({ ...editDraft, answer: i })} className="w-6 h-6 cursor-pointer flex-shrink-0" style={{ accentColor: '#00b395' }} />
-                        <span className="w-9 h-9 border-2 border-gray-900 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0" style={editDraft.answer === i ? { background: '#00b395', color: 'white' } : { background: 'white' }}>{String.fromCharCode(65 + i)}</span>
-                        <input type="text" value={choice} onChange={(e) => { const c = [...editDraft.choices]; c[i] = e.target.value; setEditDraft({ ...editDraft, choices: c }) }} className="flex-1 p-3 border-2 border-gray-900 rounded-lg bg-white text-base" />
-                        <button type="button" onClick={() => { if (editDraft.choices.length <= 2) { alert('Minimum 2 choices.'); return }; const nc = editDraft.choices.filter((_, idx) => idx !== i); let na = editDraft.answer; if (na === i) na = 0; else if (na > i) na--; setEditDraft({ ...editDraft, choices: nc, answer: na }) }} className="px-3 py-2 text-red-600 hover:bg-red-100 rounded-lg" disabled={editDraft.choices.length <= 2}>🗑</button>
-                      </div>
-                    ))}
+  <div key={i} className="mb-3">
+    <div className="flex gap-3 items-center">
+      <input type="radio" name="correct-modal" checked={editDraft.answer === i} onChange={() => setEditDraft({ ...editDraft, answer: i })} className="w-6 h-6 cursor-pointer flex-shrink-0" style={{ accentColor: '#00b395' }} />
+      <span className="w-9 h-9 border-2 border-gray-900 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0" style={editDraft.answer === i ? { background: '#00b395', color: 'white' } : { background: 'white' }}>{String.fromCharCode(65 + i)}</span>
+      <input type="text" value={choice} onChange={(e) => { const c = [...editDraft.choices]; c[i] = e.target.value; setEditDraft({ ...editDraft, choices: c }) }} className="flex-1 p-3 border-2 border-gray-900 rounded-lg bg-white text-base" />
+      <button type="button" onClick={() => { if (editDraft.choices.length <= 2) { alert('Minimum 2 choices.'); return }; const nc = editDraft.choices.filter((_, idx) => idx !== i); const nce = (editDraft.choice_explanations || []).filter((_, idx) => idx !== i); let na = editDraft.answer; if (na === i) na = 0; else if (na > i) na--; setEditDraft({ ...editDraft, choices: nc, choice_explanations: nce, answer: na }) }} className="px-3 py-2 text-red-600 hover:bg-red-100 rounded-lg" disabled={editDraft.choices.length <= 2}>🗑</button>
+    </div>
+    <textarea
+      value={(editDraft.choice_explanations || [])[i] || ''}
+      onChange={(e) => { const ce = editDraft.choices.map((_, idx) => (editDraft.choice_explanations || [])[idx] || ''); ce[i] = e.target.value; setEditDraft({ ...editDraft, choice_explanations: ce }) }}
+      rows={2}
+      placeholder={`Why choice ${String.fromCharCode(65 + i)} is ${editDraft.answer === i ? 'correct' : 'wrong'} (optional)`}
+      className="w-full mt-2 border-2 border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50"
+    />
+  </div>
+))}
                     {editDraft.choices.length < 8 && (
-                      <button type="button" onClick={() => setEditDraft({ ...editDraft, choices: [...editDraft.choices, `Option ${String.fromCharCode(65 + editDraft.choices.length)}`] })} className="mt-2 px-4 py-2 bg-white border-2 border-dashed border-gray-400 rounded-lg text-sm font-bold">+ Add choice</button>
+                      <button type="button" onClick={() => setEditDraft({ ...editDraft, choices: [...editDraft.choices, `Option ${String.fromCharCode(65 + editDraft.choices.length)}`], choice_explanations: [...(editDraft.choice_explanations || []), ''] })} className="mt-2 px-4 py-2 bg-white border-2 border-dashed border-gray-400 rounded-lg text-sm font-bold">+ Add choice</button>
                     )}
                   </div>
                   {editDraft.pool === 'practice' && (
