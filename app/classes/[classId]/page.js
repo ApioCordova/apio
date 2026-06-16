@@ -606,13 +606,13 @@ export default function ClassPage() {
                 <label className="block">
                   <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Topic</span>
                   <select value={assignLessonId} onChange={(e) => setAssignLessonId(e.target.value)} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1 bg-white">
-                    <option value="">Pick a topic…</option>
-                    {(course?.units || []).map((u) => (
-                      <optgroup key={u.id} label={`Unit ${u.number}: ${u.name}`}>
-                        {u.lessons.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
-                      </optgroup>
-                    ))}
-                  </select>
+  <option value="">Pick a topic…</option>
+  {(course?.units || []).map((u) => (
+    <optgroup key={u.id} label={`Unit ${u.number}: ${u.name}`} style={{ color: '#9ca3af', fontWeight: 700 }}>
+      {u.lessons.map((l) => <option key={l.id} value={l.id} style={{ color: '#1a1d29' }}>{l.title}</option>)}
+    </optgroup>
+  ))}
+</select>
                 </label>
               )}
 
