@@ -69,7 +69,13 @@ export default function RichEditor({ value, onChange }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])
-  const fileInputRef = useRef(null)
+  function addImage() {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.addEventListener('change', handleImageUpload)
+    input.click()
+  }
   const [uploadingImage, setUploadingImage] = useState(false)
   if (!editor) return <p className="text-gray-500 text-sm p-4">Loading editor...</p>
 
@@ -120,7 +126,6 @@ export default function RichEditor({ value, onChange }) {
 
   return (
     <div className="border-2 border-gray-900 rounded-lg overflow-hidden bg-white">
-     <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
       {/* Toolbar */}
       <div className="border-b-2 border-gray-900 bg-gray-50 p-2 flex flex-wrap gap-1 items-center">
         <ToolbarGroup>
