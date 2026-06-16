@@ -93,7 +93,17 @@ export default function RichEditor({ value, onChange }) {
   }
 
   function addImage() {
-    fileInputRef.current?.click()
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.style.position = 'fixed'
+    input.style.left = '-9999px'
+    input.addEventListener('change', (e) => {
+      handleImageUpload(e)
+      input.remove()
+    })
+    document.body.appendChild(input)
+    input.click()
   }
 
   async function handleImageUpload(e) {
