@@ -165,6 +165,7 @@ export default function CustomAssignmentsPage() {
       choices: Array.isArray(q.choices) ? [...q.choices] : ['Option A', 'Option B'],
       answer: q.answer ?? 0,
       explanation: q.explanation || '',
+      choice_explanations: Array.isArray(q.choice_explanations) ? [...q.choice_explanations] : [],
       difficulty: q.difficulty || null,
       source_question_id: q.source_question_id || null,
       _authored: !q.source_question_id,
@@ -187,6 +188,7 @@ export default function CustomAssignmentsPage() {
       choices: Array.isArray(q.choices) ? [...q.choices] : ['Option A', 'Option B'],
       answer: q.answer ?? 0,
       explanation: q.explanation || '',
+      choice_explanations: Array.isArray(q.choice_explanations) ? [...q.choice_explanations] : [],
       difficulty: q.difficulty || null,
       source_question_id: q.id,
       _authored: false,
@@ -265,6 +267,7 @@ export default function CustomAssignmentsPage() {
       choices: it.choices,
       answer: it.answer,
       explanation: it.explanation,
+      choice_explanations: it.choice_explanations || [],
       difficulty: it.difficulty || null,
       sort_order: i + 1,
     }))

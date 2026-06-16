@@ -290,7 +290,7 @@ export default function AdminContentPage() {
       lesson_id: selectedLessonId, stem: 'Enter your question here.',
       choices: ['Option A', 'Option B', 'Option C', 'Option D'],
       choice_explanations: ['', '', '', ''],
-      answer: 0, explanation: 'Why this answer is correct.',
+      answer: 0, explanation: '',
       sort_order: sortOrder, status: 'draft', pool, created_by: currentUser?.id,
       level_id: levelId, difficulty: null,
     }).select().single()
@@ -428,13 +428,19 @@ export default function AdminContentPage() {
       <input type="text" value={choice} onChange={(e) => { const c = [...editDraft.choices]; c[i] = e.target.value; setEditDraft({ ...editDraft, choices: c }) }} className="flex-1 p-3 border-2 border-gray-900 rounded-lg bg-white text-base" />
       <button type="button" onClick={() => { if (editDraft.choices.length <= 2) { alert('Minimum 2 choices.'); return }; const nc = editDraft.choices.filter((_, idx) => idx !== i); const nce = (editDraft.choice_explanations || []).filter((_, idx) => idx !== i); let na = editDraft.answer; if (na === i) na = 0; else if (na > i) na--; setEditDraft({ ...editDraft, choices: nc, choice_explanations: nce, answer: na }) }} className="px-3 py-2 text-red-600 hover:bg-red-100 rounded-lg" disabled={editDraft.choices.length <= 2}>🗑</button>
     </div>
-    <textarea
-      value={(editDraft.choice_explanations || [])[i] || ''}
-      onChange={(e) => { const ce = editDraft.choices.map((_, idx) => (editDraft.choice_explanations || [])[idx] || ''); ce[i] = e.target.value; setEditDraft({ ...editDraft, choice_explanations: ce }) }}
-      rows={2}
-      placeholder={`Why choice ${String.fromCharCode(65 + i)} is ${editDraft.answer === i ? 'correct' : 'wrong'} (optional)`}
-      className="w-full mt-2 border-2 border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50"
-    />
+    <div className="mt-2">
+      <span className="text-[11px] font-mono tracking-widest uppercase text-gray-500">
+        Why choice {String.fromCharCode(65 + i)} is {editDraft.answer === i ? 'correct' : 'wrong'} (optional)
+      </span>
+      <div className="mt-1">
+        <RichEditor
+          collapsible
+          collapsedHeight={44}
+          value={(editDraft.choice_explanations || [])[i] || ''}
+          onChange={(html) => { const ce = editDraft.choices.map((_, idx) => (editDraft.choice_explanations || [])[idx] || ''); ce[i] = html; setEditDraft({ ...editDraft, choice_explanations: ce }) }}
+        />
+      </div>
+    </div>
   </div>
 ))}
                     {editDraft.choices.length < 8 && (
@@ -489,11 +495,6 @@ export default function AdminContentPage() {
                           </button>
                         ))}
                       </div>
-                    </Field>
-                  </div>
-                  <div className="mt-6">
-                    <Field label="Explanation">
-                      <RichEditor value={editDraft.explanation || ''} onChange={(html) => setEditDraft({ ...editDraft, explanation: html })} />
                     </Field>
                   </div>
                 </>

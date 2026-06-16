@@ -219,7 +219,12 @@ export default function CustomSetPage() {
               <h3 className={`text-lg font-black mb-0.5 ${readOnly ? 'text-gray-900' : isCorrect ? 'text-green-800' : 'text-red-800'}`}>
                 {readOnly ? 'Correct answer' : isCorrect ? 'Excellent.' : 'Not quite.'}
               </h3>
-              {item.explanation && <p className="text-xs text-gray-700 leading-relaxed">{item.explanation}</p>}
+              {(((item.choice_explanations || [])[selected]) || item.explanation) && (
+                <div
+                  className="text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900"
+                  dangerouslySetInnerHTML={{ __html: ((item.choice_explanations || [])[selected]) || item.explanation || '' }}
+                />
+              )}
             </div>
             <button onClick={onContinue} className={`px-7 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm flex-shrink-0 ${!readOnly && isCorrect ? 'bg-green-600' : 'bg-gray-900'}`}>
               {itemIndex + 1 < items.length ? 'Continue' : 'Finish'}

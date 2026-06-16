@@ -14,7 +14,9 @@ import { TableHeader } from '@tiptap/extension-table-header'
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export default function RichEditor({ value, onChange }) {
+export default function RichEditor({ value, onChange, collapsible = false, collapsedHeight = 44, minHeight = 300 }) {
+  const [focused, setFocused] = useState(false)
+  const wrapRef = useRef(null)
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -57,18 +59,24 @@ export default function RichEditor({ value, onChange }) {
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: 'prose prose-base max-w-none p-4 min-h-[300px] focus:outline-none prose-headings:font-black prose-headings:tracking-tight prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900',
+        class: 'prose prose-base max-w-none p-4 focus:outline-none prose-headings:font-black prose-headings:tracking-tight prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900',
       },
     },
   })
 
-  // Sync external content changes
+  /// Sync external content changes
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
       editor.commands.setContent(value || '', false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])
+
+  // Collapsed vs expanded min-height (set directly on the ProseMirror node)
+  useEffect(() => {
+    if (!editor) return
+    editor.view.dom.style.minHeight = `${(!collapsible || focused) ? minHeight : collapsedHeight}px`
+  }, [editor, focused, collapsible, minHeight, collapsedHeight])
   function addImage() {
     const input = document.createElement('input')
     input.type = 'file'
@@ -133,10 +141,17 @@ export default function RichEditor({ value, onChange }) {
   }
 
   const isInTable = editor.isActive('table')
+  const showToolbar = !collapsible || focused
 
   return (
-    <div className="border-2 border-gray-900 rounded-lg overflow-hidden bg-white">
+    <div
+      ref={wrapRef}
+      onFocus={() => collapsible && setFocused(true)}
+      onBlur={(e) => { if (collapsible && wrapRef.current && !wrapRef.current.contains(e.relatedTarget)) setFocused(false) }}
+      className="border-2 border-gray-900 rounded-lg overflow-hidden bg-white"
+    >
       {/* Toolbar */}
+      {showToolbar && (
       <div className="border-b-2 border-gray-900 bg-gray-50 p-2 flex flex-wrap gap-1 items-center">
         <ToolbarGroup>
           <ToolbarBtn
@@ -316,6 +331,7 @@ export default function RichEditor({ value, onChange }) {
           </ToolbarBtn>
         </ToolbarGroup>
       </div>
+      )}
 
       {/* Editor */}
       <EditorContent editor={editor} />
