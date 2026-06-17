@@ -134,6 +134,16 @@ export default function ContributorsPage() {
 
   if (loading) return <p className="text-gray-600 font-mono text-sm">Loading contributors...</p>
 
+  if (!isAdmin) {
+    return (
+      <div>
+        <p className="text-xs font-mono tracking-widest uppercase mb-2" style={{ color: '#00b395' }}>// team management</p>
+        <h1 className="text-3xl font-black tracking-tight mb-3">Contributors</h1>
+        <p className="text-gray-700">Only admins can manage contributors.</p>
+      </div>
+    )
+  }
+
   const pendingRequests = requests.filter(r => r.status === 'pending')
   const filteredProfiles = searchEmail
     ? profiles.filter(p => p.email?.toLowerCase().includes(searchEmail.toLowerCase()) || p.full_name?.toLowerCase().includes(searchEmail.toLowerCase()))

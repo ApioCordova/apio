@@ -70,14 +70,16 @@ export default function AdminLayout({ children }) {
     )
   }
 
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'editor'
+
   const navItems = [
-  { href: '/admin/sections', label: 'Sections', icon: '🗂' },   // ← add this line
-  { href: '/admin', label: 'Content', icon: '📚' },
-  { href: '/admin/review', label: 'Pending Review', icon: '📋' },
-  { href: '/admin/contributors', label: 'Contributors', icon: '👥' },
-  { href: '/admin/teacher-codes', label: 'Teacher Access', icon: '🎟' },
-  { href: '/admin/analytics', label: 'Analytics', icon: '📊' },
-]
+    { href: '/admin/sections', label: 'Sections', icon: '🗂' },
+    { href: '/admin', label: 'Content', icon: '📚' },
+    { href: '/admin/review', label: 'Pending Review', icon: '📋' },
+    { href: '/admin/contributors', label: 'Contributors', icon: '👥', adminOnly: true },
+    { href: '/admin/teacher-codes', label: 'Teacher Access', icon: '🎟', adminOnly: true },
+    { href: '/admin/analytics', label: 'Analytics', icon: '📊', adminOnly: true },
+  ].filter((item) => !item.adminOnly || isAdmin)
 
   return (
     <div className="min-h-screen" style={{ background: '#f6fbf8' }}>

@@ -39,7 +39,7 @@ export default function TeacherCodesPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { setLoading(false); return }
       const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-      const admin = profile?.role === 'admin'
+      const admin = profile?.role === 'admin' || profile?.role === 'editor'
       setIsAdmin(admin)
       if (admin) await loadCodes()
       setLoading(false)
