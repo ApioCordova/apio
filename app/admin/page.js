@@ -200,7 +200,7 @@ export default function AdminContentPage() {
   }
   async function addCourse() {
     const id = `course-${Date.now()}`
-    const { error } = await supabase.from('courses').insert({ id, title: 'New AP Course', short_title: 'New', description: 'Click to edit.', icon: '★', tone: 'default', sort_order: courses.length + 1, status: 'draft' })
+    const { error } = await supabase.from('courses').insert({ id, title: 'New AP Course', short_title: 'New', description: 'Click to edit.', icon: '★', tone: 'default', sort_order: courses.length + 1, status: 'draft', created_by: currentUser?.id })
     if (error) { showToast('Failed: ' + error.message); return }
     showToast('Draft course created'); await loadCourses(); setSelectedCourseId(id)
   }
@@ -230,7 +230,7 @@ export default function AdminContentPage() {
     const course = courses.find(c => c.id === courseId)
     const number = (course?.units.length || 0) + 1
     const id = `unit-${Date.now()}`
-    const { error } = await supabase.from('units').insert({ id, course_id: courseId, name: `New Unit ${number}`, number, sort_order: number, status: 'draft' })
+    const { error } = await supabase.from('units').insert({ id, course_id: courseId, name: `New Unit ${number}`, number, sort_order: number, status: 'draft', created_by: currentUser?.id })
     if (error) { showToast('Failed: ' + error.message); return }
     showToast('Draft unit created'); await loadCourses()
   }
@@ -253,7 +253,7 @@ export default function AdminContentPage() {
     const id = `lesson-${Date.now()}`
     const unit = courses.flatMap(c => c.units).find(u => u.id === unitId)
     const sortOrder = (unit?.lessons.length || 0) + 1
-    const { error } = await supabase.from('lessons').insert({ id, unit_id: unitId, title: 'New Lesson', description: 'Click to edit.', icon: '★', sort_order: sortOrder, status: 'draft' })
+    const { error } = await supabase.from('lessons').insert({ id, unit_id: unitId, title: 'New Lesson', description: 'Click to edit.', icon: '★', sort_order: sortOrder, status: 'draft', created_by: currentUser?.id })
     if (error) { showToast('Failed: ' + error.message); return }
     showToast('Draft lesson created'); await loadCourses(); setSelectedLessonId(id)
   }
@@ -268,7 +268,7 @@ export default function AdminContentPage() {
     if (!selectedLessonId) return
     const nextNum = levels.length + 1
     const { data, error } = await supabase.from('levels').insert({
-      lesson_id: selectedLessonId, number: nextNum, title: `Level ${nextNum}`, sort_order: nextNum, status: 'draft',
+      lesson_id: selectedLessonId, number: nextNum, title: `Level ${nextNum}`, sort_order: nextNum, status: 'draft', created_by: currentUser?.id,
     }).select().single()
     if (error) { showToast('Failed: ' + error.message); return }
     // Update max_levels on the lesson
@@ -614,7 +614,7 @@ export default function AdminContentPage() {
               <p className="text-xs font-mono tracking-widest uppercase mb-2" style={{ color: '#00b395' }}>// content management</p>
               <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
                 <h1 className="text-3xl font-black tracking-tight">{selectedCourse ? `Editing ${selectedCourse.title}` : 'Pick a lesson to edit.'}</h1>
-                {selectedCourse && <StatusControls status={selectedCourse.status} onChange={(s) => setStatus('courses', selectedCourse.id, s)} onSendForApproval={() => sendForApproval('courses', selectedCourse.id)} onApprove={() => approveContent('courses', selectedCourse.id)} onDeny={() => denyContent('courses', selectedCourse.id)} role={currentRole} isOwnContent={false} />}
+                {selectedCourse && <StatusControls status={selectedCourse.status} onChange={(s) => setStatus('courses', selectedCourse.id, s)} onSendForApproval={() => sendForApproval('courses', selectedCourse.id)} onApprove={() => approveContent('courses', selectedCourse.id)} onDeny={() => denyContent('courses', selectedCourse.id)} role={currentRole} isOwnContent={selectedCourse.created_by === currentUser?.id} />}
               </div>
               <p className="text-gray-700 max-w-xl mb-6">{selectedCourse ? 'Edit course details below, or pick a lesson in the sidebar.' : 'Choose a course, then a lesson.'}</p>
               {selectedCourse && (<>
@@ -628,7 +628,7 @@ export default function AdminContentPage() {
                     <button onClick={() => addUnit(selectedCourse.id)} className="px-3 py-1.5 text-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]" style={{ background: '#00b395' }}>+ Add unit</button>
                   </div>
                   <div className="flex flex-col gap-2">
-                    {selectedCourse.units.map(unit => <UnitRow key={unit.id} unit={unit} onUpdate={updateUnitField} onStatusChange={(s) => setStatus('units', unit.id, s)} onSendForApproval={() => sendForApproval('units', unit.id)} onApprove={() => approveContent('units', unit.id)} onDeny={() => denyContent('units', unit.id)} onDelete={() => deleteUnit(unit.id, unit.name, unit.lessons.length)} role={currentRole} />)}
+                    {selectedCourse.units.map(unit => <UnitRow key={unit.id} unit={unit} onUpdate={updateUnitField} onStatusChange={(s) => setStatus('units', unit.id, s)} onSendForApproval={() => sendForApproval('units', unit.id)} onApprove={() => approveContent('units', unit.id)} onDeny={() => denyContent('units', unit.id)} onDelete={() => deleteUnit(unit.id, unit.name, unit.lessons.length)} role={currentRole} currentUserId={currentUser?.id} />)}
                     {selectedCourse.units.length === 0 && <p className="text-sm text-gray-500 italic text-center py-4">No units yet.</p>}
                   </div>
                 </div>
@@ -640,7 +640,7 @@ export default function AdminContentPage() {
               <div className="flex justify-between items-start gap-3 mb-2 flex-wrap">
                 <p className="text-xs font-mono tracking-widest uppercase" style={{ color: '#00b395' }}>// {selectedCourse.short_title} ▸ Unit {selectedLesson.unit.number}</p>
                 <div className="flex gap-2 items-center flex-wrap">
-                  <StatusControls status={selectedLesson.status} onChange={(s) => setStatus('lessons', selectedLesson.id, s)} onSendForApproval={() => sendForApproval('lessons', selectedLesson.id)} onApprove={() => approveContent('lessons', selectedLesson.id)} onDeny={() => denyContent('lessons', selectedLesson.id)} role={currentRole} isOwnContent={false} />
+                  <StatusControls status={selectedLesson.status} onChange={(s) => setStatus('lessons', selectedLesson.id, s)} onSendForApproval={() => sendForApproval('lessons', selectedLesson.id)} onApprove={() => approveContent('lessons', selectedLesson.id)} onDeny={() => denyContent('lessons', selectedLesson.id)} role={currentRole} isOwnContent={selectedLesson.created_by === currentUser?.id} />
                   <button onClick={() => deleteLesson(selectedLesson.id, selectedLesson.title)} className="px-3 py-1 bg-red-500 text-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">Delete lesson</button>
                 </div>
               </div>
@@ -688,7 +688,7 @@ export default function AdminContentPage() {
                       <>
                         <div className="flex items-center gap-3 mb-1">
                           <h2 className="text-xl font-black tracking-tight">{selectedLevel.title || `Level ${selectedLevel.number}`}</h2>
-                          <StatusControls status={selectedLevel.status} onChange={(s) => setStatus('levels', selectedLevel.id, s)} onSendForApproval={() => sendForApproval('levels', selectedLevel.id)} onApprove={() => approveContent('levels', selectedLevel.id)} onDeny={() => denyContent('levels', selectedLevel.id)} role={currentRole} isOwnContent={false} />
+                          <StatusControls status={selectedLevel.status} onChange={(s) => setStatus('levels', selectedLevel.id, s)} onSendForApproval={() => sendForApproval('levels', selectedLevel.id)} onApprove={() => approveContent('levels', selectedLevel.id)} onDeny={() => denyContent('levels', selectedLevel.id)} role={currentRole} isOwnContent={selectedLevel.created_by === currentUser?.id} />
                           {levels.length > 1 && <button onClick={() => deleteLevel(selectedLevel.id, selectedLevel.number)} className="px-2 py-1 text-red-600 hover:bg-red-100 rounded text-xs font-bold">🗑 Delete level</button>}
                         </div>
                         <p className="text-xs text-gray-500">{levelReadingCount} reading{levelReadingCount === 1 ? '' : 's'} · {levelQuestionCount} question{levelQuestionCount === 1 ? '' : 's'}</p>
@@ -872,8 +872,7 @@ function CourseEditor({ course, onUpdate }) {
     </div>
   )
 }
-
-function UnitRow({ unit, onUpdate, onStatusChange, onDelete, role, onSendForApproval, onApprove, onDeny }) {
+function UnitRow({ unit, onUpdate, onStatusChange, onDelete, role, onSendForApproval, onApprove, onDeny, currentUserId }) {
   const [draft, setDraft] = useState(unit)
   useEffect(() => setDraft(unit), [unit.id])
   function commit(field) { if (draft[field] !== unit[field]) onUpdate(unit.id, field, draft[field]) }
@@ -885,7 +884,7 @@ function UnitRow({ unit, onUpdate, onStatusChange, onDelete, role, onSendForAppr
         <span className="text-xs font-mono text-gray-500 px-2">{unit.lessons.length} lesson{unit.lessons.length === 1 ? '' : 's'}</span>
         <button onClick={onDelete} className="px-2 py-1 text-red-600 hover:bg-red-100 rounded text-sm">🗑</button>
       </div>
-      <div className="flex justify-end"><StatusControls status={unit.status} onChange={onStatusChange} onSendForApproval={onSendForApproval} onApprove={onApprove} onDeny={onDeny} role={role} isOwnContent={false} /></div>
+      <div className="flex justify-end"><StatusControls status={unit.status} onChange={onStatusChange} onSendForApproval={onSendForApproval} onApprove={onApprove} onDeny={onDeny} role={role} isOwnContent={unit.created_by === currentUserId} /></div>
     </div>
   )
 }
