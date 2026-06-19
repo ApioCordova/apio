@@ -228,9 +228,9 @@ export default function LibraryPage() {
     const { data, error } = await supabase.from('questions').insert({
       lesson_id: lessonId, level_id: levelId, pool,
       owner_id: me.id, course_id: cid,
-      stem: 'Enter your question here.',
-      choices: ['Option A', 'Option B', 'Option C', 'Option D'],
-      answer: 0, explanation: 'Why this answer is correct.',
+      stem: '',
+      choices: ['', '', '', ''],
+      answer: 0, explanation: '',
       difficulty: null, sort_order,
       status: pool === 'private' ? 'published' : 'draft',
     }).select().single()
@@ -244,7 +244,7 @@ export default function LibraryPage() {
     const { data, error } = await supabase.from('readings').insert({
       lesson_id: lessonId, level_id: levelId,
       owner_id: me.id, course_id: cid,
-      title: 'New reading', content: '<p>Enter your content here.</p>',
+      title: 'New reading', content: '',
       sort_order, status: isPool ? 'published' : 'draft',
     }).select().single()
     if (error) { flash('Failed: ' + error.message); return }
@@ -652,7 +652,7 @@ export default function LibraryPage() {
                 <>
                   <div>
                     <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Question</span>
-                    <div className="mt-1"><RichEditor value={draft.stem || ''} onChange={(html) => setDraft({ ...draft, stem: html })} /></div>
+                    <div className="mt-1"><RichEditor placeholder="Enter your question here…" value={draft.stem || ''} onChange={(html) => setDraft({ ...draft, stem: html })} /></div>
                   </div>
 
                   <div>
@@ -661,7 +661,7 @@ export default function LibraryPage() {
                       {draft.choices.map((c, idx) => (
                         <div key={idx} className="flex items-center gap-2">
                           <input type="radio" checked={draft.answer === idx} onChange={() => setDraft({ ...draft, answer: idx })} className="w-4 h-4 accent-gray-900" />
-                          <input value={c} onChange={(e) => setDraft({ ...draft, choices: draft.choices.map((x, i) => (i === idx ? e.target.value : x)) })}
+                          <input placeholder={`Option ${String.fromCharCode(65 + idx)}`} value={c} onChange={(e) => setDraft({ ...draft, choices: draft.choices.map((x, i) => (i === idx ? e.target.value : x)) })}
                             className="flex-1 border-2 border-gray-900 rounded-lg px-3 py-1.5" />
                           {draft.choices.length > 2 && (
                             <button onClick={() => setDraft({ ...draft, choices: draft.choices.filter((_, i) => i !== idx), answer: draft.answer >= idx && draft.answer > 0 ? draft.answer - 1 : draft.answer })}
@@ -671,7 +671,7 @@ export default function LibraryPage() {
                       ))}
                     </div>
                     {draft.choices.length < 6 && (
-                      <button onClick={() => setDraft({ ...draft, choices: [...draft.choices, `Option ${String.fromCharCode(65 + draft.choices.length)}`] })}
+                      <button onClick={() => setDraft({ ...draft, choices: [...draft.choices, ''] })}
                         className="mt-2 px-3 py-1 border-2 border-gray-900 rounded-lg text-xs font-bold bg-white">+ Add choice</button>
                     )}
                   </div>
@@ -686,19 +686,19 @@ export default function LibraryPage() {
 
                   <div>
                     <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Explanation</span>
-                    <div className="mt-1"><RichEditor value={draft.explanation} onChange={(html) => setDraft({ ...draft, explanation: html })} /></div>
+                    <div className="mt-1"><RichEditor placeholder="Explain why the correct answer is correct…" value={draft.explanation} onChange={(html) => setDraft({ ...draft, explanation: html })} /></div>
                   </div>
                 </>
               ) : (
                 <>
                   <label className="block">
                     <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Reading title</span>
-                    <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+                    <input placeholder="Reading title" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
                       className="w-full border-2 border-gray-900 rounded-lg px-3 py-2 mt-1 font-bold" />
                   </label>
                   <div>
                     <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Content</span>
-                    <div className="mt-1"><RichEditor value={draft.content} onChange={(html) => setDraft({ ...draft, content: html })} /></div>
+                    <div className="mt-1"><RichEditor placeholder="Write the reading content here…" value={draft.content} onChange={(html) => setDraft({ ...draft, content: html })} /></div>
                   </div>
                 </>
               )}

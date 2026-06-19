@@ -293,8 +293,8 @@ export default function AdminContentPage() {
     if (pool === 'lesson' && !levelId) { showToast('Select a level first'); return }
     const sortOrder = items.length + 1
     const { data, error } = await supabase.from('questions').insert({
-      lesson_id: selectedLessonId, stem: 'Enter your question here.',
-      choices: ['Option A', 'Option B', 'Option C', 'Option D'],
+      lesson_id: selectedLessonId, stem: '',
+      choices: ['', '', '', ''],
       choice_explanations: ['', '', '', ''],
       answer: 0, explanation: '',
       sort_order: sortOrder, status: 'draft', pool, created_by: currentUser?.id,
@@ -309,7 +309,7 @@ export default function AdminContentPage() {
     if (!selectedLessonId || !selectedLevelId) { showToast('Select a level first'); return }
     const sortOrder = items.length + 1
     const { data, error } = await supabase.from('readings').insert({
-      lesson_id: selectedLessonId, title: 'New reading', content: '<p>Enter your content here.</p>',
+      lesson_id: selectedLessonId, title: 'New reading', content: '',
       sort_order: sortOrder, status: 'draft', created_by: currentUser?.id,
       level_id: selectedLevelId,
     }).select().single()
@@ -422,7 +422,7 @@ export default function AdminContentPage() {
               {editDraft._kind === 'question' ? (
                 <>
                   <Field label="Question stem">
-                    <RichEditor value={editDraft.stem || ''} onChange={(html) => setEditDraft({ ...editDraft, stem: html })} />
+                    <RichEditor placeholder="Enter your question here…" value={editDraft.stem || ''} onChange={(html) => setEditDraft({ ...editDraft, stem: html })} />
                   </Field>
                   <div className="mt-6">
                     <p className="text-xs font-mono uppercase tracking-widest text-gray-700 font-bold mb-3">Answer choices — click to mark correct</p>
@@ -431,7 +431,7 @@ export default function AdminContentPage() {
     <div className="flex gap-3 items-center">
       <input type="radio" name="correct-modal" checked={editDraft.answer === i} onChange={() => setEditDraft({ ...editDraft, answer: i })} className="w-6 h-6 cursor-pointer flex-shrink-0" style={{ accentColor: '#00b395' }} />
       <span className="w-9 h-9 border-2 border-gray-900 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0" style={editDraft.answer === i ? { background: '#00b395', color: 'white' } : { background: 'white' }}>{String.fromCharCode(65 + i)}</span>
-      <input type="text" value={choice} onChange={(e) => { const c = [...editDraft.choices]; c[i] = e.target.value; setEditDraft({ ...editDraft, choices: c }) }} className="flex-1 p-3 border-2 border-gray-900 rounded-lg bg-white text-base" />
+      <input type="text" placeholder={`Option ${String.fromCharCode(65 + i)}`} value={choice} onChange={(e) => { const c = [...editDraft.choices]; c[i] = e.target.value; setEditDraft({ ...editDraft, choices: c }) }} className="flex-1 p-3 border-2 border-gray-900 rounded-lg bg-white text-base" />
       <button type="button" onClick={() => { if (editDraft.choices.length <= 2) { alert('Minimum 2 choices.'); return }; const nc = editDraft.choices.filter((_, idx) => idx !== i); const nce = (editDraft.choice_explanations || []).filter((_, idx) => idx !== i); let na = editDraft.answer; if (na === i) na = 0; else if (na > i) na--; setEditDraft({ ...editDraft, choices: nc, choice_explanations: nce, answer: na }) }} className="px-3 py-2 text-red-600 hover:bg-red-100 rounded-lg" disabled={editDraft.choices.length <= 2}>🗑</button>
     </div>
     <div className="mt-2">
@@ -450,7 +450,7 @@ export default function AdminContentPage() {
   </div>
 ))}
                     {editDraft.choices.length < 8 && (
-                      <button type="button" onClick={() => setEditDraft({ ...editDraft, choices: [...editDraft.choices, `Option ${String.fromCharCode(65 + editDraft.choices.length)}`], choice_explanations: [...(editDraft.choice_explanations || []), ''] })} className="mt-2 px-4 py-2 bg-white border-2 border-dashed border-gray-400 rounded-lg text-sm font-bold">+ Add choice</button>
+                      <button type="button" onClick={() => setEditDraft({ ...editDraft, choices: [...editDraft.choices, ''], choice_explanations: [...(editDraft.choice_explanations || []), ''] })} className="mt-2 px-4 py-2 bg-white border-2 border-dashed border-gray-400 rounded-lg text-sm font-bold">+ Add choice</button>
                     )}
                   </div>
                   {editDraft.pool === 'practice' && (
@@ -511,7 +511,7 @@ export default function AdminContentPage() {
                   </Field>
                   <div className="mt-6">
                     <p className="block text-xs font-mono tracking-widest uppercase text-gray-700 font-bold mb-2">Content</p>
-                    <RichEditor value={editDraft.content || ''} onChange={(html) => setEditDraft({ ...editDraft, content: html })} />
+                    <RichEditor placeholder="Write the reading content here…" value={editDraft.content || ''} onChange={(html) => setEditDraft({ ...editDraft, content: html })} />
                     <p className="text-xs text-gray-500 mt-2">💡 For images, paste a URL. For videos, paste a YouTube URL.</p>
                   </div>
                 </>

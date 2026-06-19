@@ -13,8 +13,11 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { TableHeader } from '@tiptap/extension-table-header'
+import { Placeholder } from '@tiptap/extensions'
+import { useEffect, useState, useRef } from 'react'
 
-export default function RichEditor({ value, onChange, collapsible = false, collapsedHeight = 44, minHeight = 300 }) {
+export default function RichEditor({ value, onChange, collapsible = false, collapsedHeight = 44, minHeight = 300, placeholder = '' }) {
   const [focused, setFocused] = useState(false)
   const wrapRef = useRef(null)
   const editor = useEditor({
@@ -50,6 +53,12 @@ export default function RichEditor({ value, onChange, collapsible = false, colla
       }),
       TableHeader.configure({
         HTMLAttributes: { class: 'border border-gray-900 p-2 bg-gray-100 font-bold min-w-[60px]' },
+      }),
+      TableHeader.configure({
+        HTMLAttributes: { class: 'border border-gray-900 p-2 bg-gray-100 font-bold min-w-[60px]' },
+      }),
+      Placeholder.configure({
+        placeholder: placeholder || 'Start typing…',
       }),
     ],
     content: value || '',

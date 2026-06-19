@@ -29,6 +29,14 @@ body {
   border: 2px solid #1a1d29;
   border-radius: 0.5rem;
 }
+/* ===== TipTap Placeholder ===== */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
 
 .ProseMirror th,
 .ProseMirror td {
