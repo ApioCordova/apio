@@ -15,7 +15,6 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { Placeholder } from '@tiptap/extensions'
-import { useEffect, useState, useRef } from 'react'
 
 export default function RichEditor({ value, onChange, collapsible = false, collapsedHeight = 44, minHeight = 300, placeholder = '' }) {
   const [focused, setFocused] = useState(false)
