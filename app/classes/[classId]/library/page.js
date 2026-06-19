@@ -99,6 +99,9 @@ export default function LibraryPage() {
   const [draft, setDraft] = useState(null)
 
   const [busy, setBusy] = useState(false)       // save / assign in-flight
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [assignDue, setAssignDue] = useState('')
+  const [assignRetry, setAssignRetry] = useState(false)
 
   const cid = klass?.course_id
 
@@ -335,9 +338,15 @@ export default function LibraryPage() {
     setBusy(false)
   }
 
-  async function assignToClass() {
+  function assignToClass() {
     if (!selLessonId) return
-    if (!confirm(`Assign "${selLesson?.title || 'this assignment'}" to this class? It will be published and pushed to students.`)) return
+    setAssignDue('')
+    setAssignRetry(false)
+    setAssignOpen(true)
+  }
+
+  async function confirmAssign() {
+    if (!selLessonId) return
     setBusy(true)
     const ok = await publishAll()
     if (!ok) { setBusy(false); return }
@@ -347,11 +356,13 @@ export default function LibraryPage() {
     const nextSort = (maxRow?.sort_order || 0) + 1
     const { error } = await supabase.from('class_assignments').insert({
       class_id: classId, type: 'lesson', lesson_id: selLessonId,
-      title: selLesson?.title || 'Custom assignment', due_date: null,
-      sort_order: nextSort, practice_set: null, allow_retry: false,
+      title: selLesson?.title || 'Custom assignment',
+      due_date: assignDue ? new Date(assignDue).toISOString() : null,
+      sort_order: nextSort, practice_set: null, allow_retry: assignRetry,
     })
     setBusy(false)
     if (error) { flash('Assign failed: ' + error.message); return }
+    setAssignOpen(false)
     await loadLessons()
     flash('Assigned to this class')
   }
@@ -395,6 +406,37 @@ export default function LibraryPage() {
   return (
     <div className="min-h-screen" style={{ background: '#f6fbf8' }}>
       {toast && <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-5 py-2.5 bg-gray-900 text-white rounded-full font-bold text-sm shadow-[4px_4px_0_#00b395]">{toast}</div>}
+
+      {assignOpen && (
+        <div className="fixed inset-0 z-[150] flex items-start justify-center p-4 md:p-8 overflow-y-auto" style={{ background: 'rgba(26,29,41,0.55)' }} onClick={() => !busy && setAssignOpen(false)}>
+          <div className="w-full max-w-lg bg-white border-[3px] border-gray-900 rounded-2xl shadow-[8px_8px_0_#1a1d29] my-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3 px-6 py-4 border-b-[3px] border-gray-900">
+              <div>
+                <p className="text-xs font-mono tracking-widest uppercase" style={{ color: tone }}>// assign to this class</p>
+                <h2 className="text-2xl font-black tracking-tight truncate">{selLesson?.title || 'Custom assignment'}</h2>
+              </div>
+              <button onClick={() => setAssignOpen(false)} disabled={busy} className="w-9 h-9 border-2 border-gray-900 rounded-full bg-white flex items-center justify-center font-bold shadow-[2px_2px_0_#1a1d29] disabled:opacity-50" aria-label="Close">✕</button>
+            </div>
+            <div className="p-6 space-y-5">
+              <label className="block">
+                <span className="text-xs font-mono tracking-widest uppercase text-gray-500">Due date <span className="normal-case tracking-normal">(optional — locks for students)</span></span>
+                <input type="datetime-local" value={assignDue} onChange={(e) => setAssignDue(e.target.value)} className="w-full border-2 border-gray-900 rounded-xl px-4 py-2.5 font-medium mt-1" />
+              </label>
+              <button type="button" onClick={() => setAssignRetry((v) => !v)} className="flex items-center gap-3 w-full text-left px-4 py-3 border-2 border-gray-900 rounded-xl bg-white shadow-[3px_3px_0_#1a1d29]">
+                <span className="w-11 h-6 rounded-full border-2 border-gray-900 flex-shrink-0 relative" style={{ background: assignRetry ? tone : '#e5e7eb' }}>
+                  <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white border border-gray-900 transition-all" style={{ left: assignRetry ? '22px' : '2px' }} />
+                </span>
+                <span className="text-sm font-bold">{assignRetry ? 'Students can retry after finishing' : 'No retries — one attempt only'}</span>
+              </button>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setAssignOpen(false)} disabled={busy} className="px-4 py-2.5 border-2 border-gray-900 rounded-xl font-bold text-sm bg-white shadow-[3px_3px_0_#1a1d29] disabled:opacity-50">Cancel</button>
+                <button onClick={confirmAssign} disabled={busy} className="px-6 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide text-sm shadow-[4px_4px_0_#1a1d29] disabled:opacity-50" style={{ background: tone }}>{busy ? 'Assigning…' : 'Assign'}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {TopBar}
 
       <div className="max-w-6xl mx-auto px-4 md:px-6 py-8">
@@ -467,13 +509,6 @@ export default function LibraryPage() {
                           className="w-full border-2 border-gray-900 rounded-lg px-3 py-2 mt-1" />
                       </label>
                     </div>
-                    <div className="flex items-center justify-between gap-2 mt-3 flex-wrap">
-                      <span className="text-xs text-gray-500 flex items-center gap-2"><StatusDot status={selLesson.status} /> {selLesson.status}</span>
-                      <div className="flex gap-2">
-                        <PublishToggle status={selLesson.status}
-                          onPublish={() => updateLessonField(selLesson.id, 'status', 'published')}
-                          onUnpublish={() => updateLessonField(selLesson.id, 'status', 'draft')} />
-                        <button onClick={() => deleteLesson(selLesson)} className="px-2.5 py-1 border-2 border-gray-900 rounded-lg text-[11px] font-bold text-red-600 bg-white">Delete lesson</button>
                       </div><div className="flex items-center justify-between gap-2 mt-3 flex-wrap">
                       <span className="text-xs text-gray-500 flex items-center gap-2">
                         <StatusDot status={selLesson.status} />
@@ -492,8 +527,6 @@ export default function LibraryPage() {
                         <button onClick={() => deleteLesson(selLesson)} className="px-2.5 py-1 border-2 border-gray-900 rounded-lg text-[11px] font-bold text-red-600 bg-white">Delete lesson</button>
                       </div>
                     </div>
-                    </div>
-                  </div>
 
                   {/* levels */}
                   <div className="border-[2.5px] border-gray-900 rounded-2xl p-4 bg-white">
