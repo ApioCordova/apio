@@ -58,7 +58,8 @@ export default function PendingReviewPage() {
       return
     }
     const table = item._kind === 'question' ? 'questions' : 'readings'
-    await supabase.from(table).update({ status: 'published' }).eq('id', item.id)
+    const { error } = await supabase.from(table).update({ status: 'published' }).eq('id', item.id)
+    if (error) { showToast(error.message || 'Could not approve'); return }
     showToast('✓ Approved & published')
     await loadPending()
   }

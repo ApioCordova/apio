@@ -137,15 +137,14 @@ export default function AdminContentPage() {
     else if (table === 'levels') await loadLevels(selectedLessonId)
     else await loadCourses()
   }
-
   async function approveContent(table, id) {
-    await supabase.from(table).update({ status: 'published' }).eq('id', id)
+    const { error } = await supabase.from(table).update({ status: 'published' }).eq('id', id)
+    if (error) { showToast(error.message || 'Could not approve'); return }
     showToast('✓ Approved & published')
     if (table === 'questions' || table === 'readings') await loadItems(selectedLessonId)
     else if (table === 'levels') await loadLevels(selectedLessonId)
     else await loadCourses()
   }
-
   async function denyContent(table, id) {
     if (!confirm('Send back to draft?')) return
     await supabase.from(table).update({ status: 'draft' }).eq('id', id)
