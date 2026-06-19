@@ -138,6 +138,13 @@ export default function AdminContentPage() {
     else await loadCourses()
   }
   async function approveContent(table, id) {
+    if (table === 'questions' || table === 'readings') {
+      const item = items.find((i) => i.id === id)
+      if (isReviewer && item && item.created_by === currentUser?.id) {
+        showToast('You cannot approve your own content. An admin must review it.')
+        return
+      }
+    }
     const { error } = await supabase.from(table).update({ status: 'published' }).eq('id', id)
     if (error) { showToast(error.message || 'Could not approve'); return }
     showToast('✓ Approved & published')
