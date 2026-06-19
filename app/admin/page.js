@@ -934,7 +934,7 @@ function ItemCard({ index, item, isFirst, isLast, onEdit, onDelete, onStatusChan
               </p>
             </div>
             <div className="flex gap-1.5 flex-wrap items-center">
-              {['lesson', 'practice', 'problem_set'].filter(p => p !== item.pool).map(p => (
+              {(item.pool === 'lesson' ? [] : item.pool === 'practice' ? ['problem_set'] : ['lesson', 'practice', 'problem_set'].filter(p => p !== item.pool)).map(p => (
                 <button key={p} onClick={() => onSetPool(p)} className="px-3 py-1 bg-white border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29]">↔ To {p === 'problem_set' ? 'problem set' : p}</button>
               ))}
               <StatusControls status={item.status} onChange={onStatusChange} onSendForApproval={onSendForApproval} onApprove={onApprove} onDeny={onDeny} role={role} isOwnContent={item.created_by === currentUserId} />
