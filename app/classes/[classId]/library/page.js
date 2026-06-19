@@ -98,6 +98,8 @@ export default function LibraryPage() {
   const [editing, setEditing] = useState(null) // { _kind, ... }
   const [draft, setDraft] = useState(null)
 
+  const [busy, setBusy] = useState(false)       // save / assign in-flight
+
   const cid = klass?.course_id
 
   function flash(m) { setToast(m); setTimeout(() => setToast(null), 2200) }
@@ -304,6 +306,56 @@ export default function LibraryPage() {
     if (isPool) await loadPool(); else await loadItems(selLessonId)
   }
 
+  // ---- publish + assign (whole-lesson, cascades to all children) ----------
+  // One Save/Assign action publishes the lesson AND every level, question and
+  // reading under it, so students actually see the content once it's assigned.
+  async function publishAll(lessonId = selLessonId) {
+    if (!lessonId || !me?.id) return false
+    const results = await Promise.all([
+      supabase.from('lessons').update({ status: 'published' }).eq('id', lessonId).eq('owner_id', me.id),
+      supabase.from('levels').update({ status: 'published' }).eq('lesson_id', lessonId),
+      supabase.from('questions').update({ status: 'published' }).eq('lesson_id', lessonId).eq('owner_id', me.id),
+      supabase.from('readings').update({ status: 'published' }).eq('lesson_id', lessonId).eq('owner_id', me.id),
+    ])
+    const err = results.find((r) => r.error)?.error
+    if (err) { flash('Publish failed: ' + err.message); return false }
+    return true
+  }
+
+  async function saveAssignment() {
+    if (!selLessonId) return
+    setBusy(true)
+    const ok = await publishAll()
+    if (ok) {
+      await loadLessons()
+      await loadLevels(selLessonId)
+      await loadItems(selLessonId)
+      flash('Saved & published — questions are now visible to students')
+    }
+    setBusy(false)
+  }
+
+  async function assignToClass() {
+    if (!selLessonId) return
+    if (!confirm(`Assign "${selLesson?.title || 'this assignment'}" to this class? It will be published and pushed to students.`)) return
+    setBusy(true)
+    const ok = await publishAll()
+    if (!ok) { setBusy(false); return }
+    const { data: maxRow } = await supabase
+      .from('class_assignments').select('sort_order')
+      .eq('class_id', classId).order('sort_order', { ascending: false }).limit(1).maybeSingle()
+    const nextSort = (maxRow?.sort_order || 0) + 1
+    const { error } = await supabase.from('class_assignments').insert({
+      class_id: classId, type: 'lesson', lesson_id: selLessonId,
+      title: selLesson?.title || 'Custom assignment', due_date: null,
+      sort_order: nextSort, practice_set: null, allow_retry: false,
+    })
+    setBusy(false)
+    if (error) { flash('Assign failed: ' + error.message); return }
+    await loadLessons()
+    flash('Assigned to this class')
+  }
+
   // ---- derived ------------------------------------------------------------
   const selLesson = useMemo(() => lessons.find((l) => l.id === selLessonId) || null, [lessons, selLessonId])
   const selLevel = useMemo(() => levels.find((l) => l.id === selLevelId) || null, [levels, selLevelId])
@@ -422,7 +474,24 @@ export default function LibraryPage() {
                           onPublish={() => updateLessonField(selLesson.id, 'status', 'published')}
                           onUnpublish={() => updateLessonField(selLesson.id, 'status', 'draft')} />
                         <button onClick={() => deleteLesson(selLesson)} className="px-2.5 py-1 border-2 border-gray-900 rounded-lg text-[11px] font-bold text-red-600 bg-white">Delete lesson</button>
+                      </div><div className="flex items-center justify-between gap-2 mt-3 flex-wrap">
+                      <span className="text-xs text-gray-500 flex items-center gap-2">
+                        <StatusDot status={selLesson.status} />
+                        {selLesson.status === 'published' ? 'Published — visible to assigned students' : 'Draft — not visible to students yet'}
+                      </span>
+                      <div className="flex gap-2 flex-wrap">
+                        <button onClick={saveAssignment} disabled={busy}
+                          className="px-4 py-2 border-2 border-gray-900 rounded-lg text-xs font-black uppercase tracking-wide bg-white shadow-[2px_2px_0_#1a1d29] disabled:opacity-50">
+                          {busy ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={assignToClass} disabled={busy}
+                          className="px-4 py-2 border-2 border-gray-900 rounded-lg text-xs font-black uppercase tracking-wide text-white shadow-[2px_2px_0_#1a1d29] disabled:opacity-50"
+                          style={{ background: tone }}>
+                          {busy ? '…' : 'Assign'}
+                        </button>
+                        <button onClick={() => deleteLesson(selLesson)} className="px-2.5 py-1 border-2 border-gray-900 rounded-lg text-[11px] font-bold text-red-600 bg-white">Delete lesson</button>
                       </div>
+                    </div>
                     </div>
                   </div>
 
@@ -456,9 +525,6 @@ export default function LibraryPage() {
                           <StatusDot status={selLevel.status} />
                         </div>
                         <div className="flex gap-2 flex-wrap">
-                          <PublishToggle status={selLevel.status}
-                            onPublish={() => setLevelStatus(selLevel, 'published')}
-                            onUnpublish={() => setLevelStatus(selLevel, 'draft')} />
                           <button onClick={() => addReading({ lessonId: selLessonId, levelId: selLevelId })} className="px-3 py-1.5 border-2 border-gray-900 rounded-lg text-xs font-bold shadow-[2px_2px_0_#1a1d29] bg-white">+ Reading</button>
                           <button onClick={() => addQuestion({ pool: 'lesson', lessonId: selLessonId, levelId: selLevelId })} className="px-3 py-1.5 border-2 border-gray-900 rounded-lg text-xs font-bold text-white shadow-[2px_2px_0_#1a1d29]" style={{ background: tone }}>+ Question</button>
                           {levels.length > 1 && <button onClick={() => deleteLevel(selLevel)} className="px-3 py-1.5 border-2 border-gray-900 rounded-lg text-xs font-bold text-red-600 bg-white">Delete level</button>}
@@ -484,9 +550,6 @@ export default function LibraryPage() {
                               </div>
                               <div className="flex flex-col gap-1 shrink-0">
                                 <button onClick={() => openEditor(it)} className="px-2.5 py-1 border-2 border-gray-900 rounded-lg text-[11px] font-bold bg-white">Edit</button>
-                                <PublishToggle status={it.status}
-                                  onPublish={() => setItemStatus(it, 'published')}
-                                  onUnpublish={() => setItemStatus(it, 'draft')} />
                                 <button onClick={() => deleteItem(it)} className="px-2.5 py-1 border-2 border-gray-900 rounded-lg text-[11px] font-bold text-red-600 bg-white">Delete</button>
                               </div>
                             </div>
