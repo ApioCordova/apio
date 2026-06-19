@@ -491,7 +491,7 @@ export default function LessonPage() {
                   </span>
                 )}
               </div>
-              <div className="bg-white border-l-4 px-4 py-3 mb-4 rounded-r-xl prose prose-sm max-w-none prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900" style={{ borderColor: '#00b395' }}
+              <div className="bg-white border-l-4 px-4 py-3 mb-4 rounded-r-xl prose prose-base max-w-none prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900" style={{ borderColor: '#00b395' }}
                 dangerouslySetInnerHTML={{ __html: item.stem || '' }} />
               <div className="flex flex-col gap-2 mb-4">
                 {item.choices.map((c, i) => {
@@ -528,7 +528,7 @@ export default function LessonPage() {
                 <h3 className={`text-lg font-black mb-0.5 ${isReview ? 'text-gray-900' : isCorrect ? 'text-green-800' : 'text-red-800'}`}>
                   {isReview ? 'Correct answer' : isCorrect ? 'Excellent.' : 'Not quite.'}
                 </h3>
-                <div className="text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900" dangerouslySetInnerHTML={{ __html: ((item.choice_explanations || [])[selected]) || item.explanation || '' }} />
+                <div className="text-sm text-gray-700 leading-relaxed prose prose-base max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900" dangerouslySetInnerHTML={{ __html: ((item.choice_explanations || [])[selected]) || item.explanation || '' }} />
               </div>
               <button onClick={onContinue} className={`px-7 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm flex-shrink-0 ${isCorrect ? 'bg-green-600' : 'bg-gray-900'}`}>
                 {itemIndex + 1 < items.length ? 'Continue' : 'Finish'}
