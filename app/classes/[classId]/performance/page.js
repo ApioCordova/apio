@@ -38,6 +38,7 @@ function PerformanceInner() {
   const [selectedId, setSelectedId] = useState(null)
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [expandedStudent, setExpandedStudent] = useState(null)
 
   // Load class + overview
   useEffect(() => {
@@ -68,6 +69,7 @@ function PerformanceInner() {
   useEffect(() => {
     let active = true
     if (!selectedId) { setDetail(null); return }
+    setExpandedStudent(null)
     async function loadDetail() {
       setDetailLoading(true)
       const { data, error } = await supabase.rpc('teacher_assignment_detail', { p_assignment: selectedId })
@@ -253,22 +255,68 @@ function PerformanceInner() {
                     </div>
                     {detail.students.length === 0 ? (
                       <p className="px-4 py-6 text-sm text-gray-500 text-center">No students enrolled yet.</p>
-                    ) : detail.students.map((s) => (
-                      <div key={s.student_id} className="grid grid-cols-12 gap-2 items-center px-4 py-3 border-b border-gray-100 last:border-0">
-                        <div className="col-span-6 min-w-0">
-                          <p className="font-bold text-sm truncate">{s.name}</p>
-                          <p className="text-[10px] font-mono text-gray-400">{s.attempted}/{s.total} answered</p>
+                    ) : detail.students.map((s) => {
+                      const isOpen = expandedStudent === s.student_id
+                      const answerMap = {}
+                      ;(s.answers || []).forEach((ans) => { answerMap[ans.question_id] = ans })
+                      return (
+                        <div key={s.student_id} className="border-b border-gray-100 last:border-0">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedStudent(isOpen ? null : s.student_id)}
+                            className="w-full grid grid-cols-12 gap-2 items-center px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                          >
+                            <div className="col-span-6 min-w-0 flex items-center gap-2">
+                              <span className="shrink-0 text-gray-400 text-xs">{isOpen ? '▾' : '▸'}</span>
+                              <div className="min-w-0">
+                                <p className="font-bold text-sm truncate">{s.name}</p>
+                                <p className="text-[10px] font-mono text-gray-400">{s.attempted}/{s.total} answered</p>
+                              </div>
+                            </div>
+                            <div className="col-span-3 text-right">
+                              <span className="font-black text-sm" style={{ color: accuracyColor(s.accuracy) }}>{s.accuracy == null ? '—' : `${s.accuracy}%`}</span>
+                            </div>
+                            <div className="col-span-3 flex justify-end">
+                              {s.status === 'late' && <span className="px-2 py-0.5 rounded-full border-2 border-gray-900 text-[10px] font-black uppercase tracking-wide text-white" style={{ background: '#ef4444' }}>Late</span>}
+                              {s.status === 'on_time' && <span className="px-2 py-0.5 rounded-full border-2 border-gray-900 text-[10px] font-black uppercase tracking-wide" style={{ background: '#dcfce7' }}>On time</span>}
+                              {s.status === 'not_submitted' && <span className="px-2 py-0.5 rounded-full border-2 border-gray-300 text-[10px] font-black uppercase tracking-wide text-gray-500 bg-gray-50">Missing</span>}
+                            </div>
+                          </button>
+
+                          {isOpen && (
+                            <div className="px-4 pb-4 pt-1 bg-gray-50 border-t border-gray-100">
+                              {detail.questions.length === 0 ? (
+                                <p className="text-xs text-gray-400 italic py-2">No questions in this assignment.</p>
+                              ) : (
+                                <div className="space-y-2 mt-2">
+                                  {detail.questions.map((q, qi) => {
+                                    const ans = answerMap[q.id]
+                                    const picked = ans && ans.selected_index != null ? ans.selected_index : null
+                                    const correct = picked != null && picked === q.answer
+                                    return (
+                                      <div key={q.id} className="flex items-start gap-2 text-xs">
+                                        <span className="shrink-0 w-5 h-5 rounded-full border border-gray-900 text-[10px] font-black flex items-center justify-center bg-white">{qi + 1}</span>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-gray-800 truncate">{q.stem}</p>
+                                          {picked != null ? (
+                                            <p className="font-mono text-[11px] mt-0.5" style={{ color: correct ? '#22c55e' : '#ef4444' }}>
+                                              {correct ? '✓' : '✗'} chose {LETTERS[picked]} · {q.choices?.[picked] ?? '—'}
+                                              {!correct && <span className="text-gray-500"> · correct {LETTERS[q.answer]}</span>}
+                                            </p>
+                                          ) : (
+                                            <p className="font-mono text-[11px] mt-0.5 text-gray-400">— no answer recorded</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        <div className="col-span-3 text-right">
-                          <span className="font-black text-sm" style={{ color: accuracyColor(s.accuracy) }}>{s.accuracy == null ? '—' : `${s.accuracy}%`}</span>
-                        </div>
-                        <div className="col-span-3 flex justify-end">
-                          {s.status === 'late' && <span className="px-2 py-0.5 rounded-full border-2 border-gray-900 text-[10px] font-black uppercase tracking-wide text-white" style={{ background: '#ef4444' }}>Late</span>}
-                          {s.status === 'on_time' && <span className="px-2 py-0.5 rounded-full border-2 border-gray-900 text-[10px] font-black uppercase tracking-wide" style={{ background: '#dcfce7' }}>On time</span>}
-                          {s.status === 'not_submitted' && <span className="px-2 py-0.5 rounded-full border-2 border-gray-300 text-[10px] font-black uppercase tracking-wide text-gray-500 bg-gray-50">Missing</span>}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               </div>

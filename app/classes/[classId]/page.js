@@ -144,7 +144,7 @@ export default function ClassPage() {
       const ids = assignments.map((a) => a.id)
       const { data } = await supabase
         .from('assignment_submissions')
-        .select('assignment_id, accuracy, completed_at')
+        .select('assignment_id, accuracy, adjusted_accuracy, completed_at')
         .eq('student_id', user.id)
         .in('assignment_id', ids)
       const map = {}
@@ -305,7 +305,7 @@ export default function ClassPage() {
   // STUDENT VIEW
   // ====================================================================
   if (role === 'student') {
-    const locked = (a) => ended || isPast(a.due_date)
+    const locked = (a) => ended || (isPast(a.due_date) && a.lock_after_due !== false)
     const current = assignments.filter((a) => !locked(a))
     const past = assignments.filter((a) => locked(a))
 
@@ -337,7 +337,7 @@ export default function ClassPage() {
                 <p className="text-xs font-mono text-gray-600">Completed · {a.type === 'problem_set' ? 'Problem set' : a.type === 'custom' ? 'Custom' : 'Lesson'}</p>
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                <span className="px-3 py-1 rounded-xl border-2 border-gray-900 font-black text-sm shadow-[2px_2px_0_#1a1d29]" style={{ background: '#fbbf24' }}>{sub.accuracy}%</span>
+                <span className="px-3 py-1 rounded-xl border-2 border-gray-900 font-black text-sm shadow-[2px_2px_0_#1a1d29]" style={{ background: '#fbbf24' }}>{sub.adjusted_accuracy ?? sub.accuracy}%</span>
                 <span className="text-sm font-black text-gray-900">Review →</span>
               </div>
             </div>
@@ -350,7 +350,7 @@ export default function ClassPage() {
           <span className="w-12 h-12 shrink-0 border-2 border-gray-900 rounded-xl flex items-center justify-center text-xl" style={{ background: `${tone}22` }}>{a.type === 'problem_set' ? '✏️' : a.type === 'custom' ? '🛠' : (m?.icon || '📘')}</span>
           <div className="min-w-0 flex-1">
             <p className="font-black tracking-tight truncate">{title}</p>
-            <p className="text-xs font-mono text-gray-500">{isLocked ? `Closed · was due ${formatDue(a.due_date)}` : `Due ${formatDue(a.due_date)} · ${progText}`}</p>
+            <p className="text-xs font-mono text-gray-500">{isLocked ? `Closed · was due ${formatDue(a.due_date)}` : (isPast(a.due_date) ? `⚠ Late · was due ${formatDue(a.due_date)} · penalty applies` : `Due ${formatDue(a.due_date)} · ${progText}`)}</p>
           </div>
           {isLocked ? <span className="text-xs font-mono font-bold text-gray-500">🔒 Closed</span> : <span className="text-sm font-black" style={{ color: '#00b395' }}>Start →</span>}
         </div>
@@ -445,7 +445,7 @@ export default function ClassPage() {
 
         <div className="flex flex-wrap gap-3 mb-8">
           <button onClick={() => openAssign('lesson')} className={btn} style={{ background: '#00b395', color: '#fff' }}>➕ Assign new</button>
-          <button onClick={() => router.push(`/classes/${classId}/library`)} className={btn} style={{ background: '#8b5cf6', color: '#fff' }}>📚 My Custom Assignements</button>
+          <button onClick={() => router.push(`/classes/${classId}/library`)} className={btn} style={{ background: '#8b5cf6', color: '#fff' }}>📚 Create Custom Assignments</button>
           <button onClick={() => router.push(`/classes/${classId}/performance`)} className={btn}>📊 Student performance</button>
           <button onClick={() => setView(view === 'past' ? 'current' : 'past')} className={btn} style={view === 'past' ? { background: '#1a1d29', color: '#fff' } : {}}>🗂 {view === 'past' ? 'Back to current' : 'Past assignments'}</button>
         </div>

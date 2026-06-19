@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import { computeLatePenalty } from '@/lib/latePenalty'
 
 const isPast = (iso) => !!iso && new Date(iso).getTime() < Date.now()
 
@@ -59,14 +60,14 @@ export default function CustomSetPage() {
 
       const { data: sub } = await supabase
         .from('assignment_submissions')
-        .select('accuracy, completed_at')
+        .select('accuracy, adjusted_accuracy, completed_at')
         .eq('assignment_id', assignmentId)
         .eq('student_id', user.id)
         .maybeSingle()
-      if (sub) setSavedAccuracy(sub.accuracy)
+      if (sub) setSavedAccuracy(sub.adjusted_accuracy ?? sub.accuracy)
 
       const isTeacher = klass?.teacher_id === user.id
-      const lockedOut = isPast(klass?.end_date) || isPast(a.due_date)
+      const lockedOut = isPast(klass?.end_date) || (isPast(a.due_date) && a.lock_after_due !== false)
       const alreadyDone = !!sub && !a.allow_retry
       setReadOnly(reviewParam || isTeacher || lockedOut || alreadyDone)
 
@@ -107,13 +108,15 @@ export default function CustomSetPage() {
 
     const finalCorrect = correctCount + (selected === item.answer ? 1 : 0)
     const acc = items.length > 0 ? Math.round((finalCorrect / items.length) * 100) : 100
+    const { adjusted: adjustedAcc } = computeLatePenalty(acc, assignment)
     await supabase.from('assignment_submissions').upsert({
       assignment_id: assignmentId,
       student_id: user.id,
       accuracy: acc,
+      adjusted_accuracy: adjustedAcc,
       completed_at: new Date().toISOString(),
     }, { onConflict: 'assignment_id,student_id', ignoreDuplicates: !assignment.allow_retry })
-    setSavedAccuracy(acc)
+    setSavedAccuracy(adjustedAcc)
     setCompleted(true)
   }
 

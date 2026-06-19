@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { computeLatePenalty } from '@/lib/latePenalty'
 
 export default function LessonPage() {
   const router = useRouter()
@@ -49,7 +50,7 @@ export default function LessonPage() {
       if (assignmentId) {
   const { data: aData } = await supabase
     .from('class_assignments')
-    .select('id, class_id, allow_retry, type')
+    .select('id, class_id, allow_retry, type, due_date, lock_after_due, late_penalty, late_penalty_mode')
     .eq('id', assignmentId)
     .maybeSingle()
   if (aData) setAssignment(aData)
@@ -239,10 +240,15 @@ export default function LessonPage() {
       // In review mode we never write anything — just exit back to the class.
       if (isReview) { router.back(); return }
 
+      // Late penalty — non-zero only for a late submission on an assignment whose
+      // teacher turned OFF "lock after due date". On-time: penalty 0, adjusted == acc.
+      const { adjusted: adjustedAcc, penalty: latePenalty } = computeLatePenalty(acc, assignment)
+
       let assignmentDone = isPracticeMode  // problem sets finish in a single session
 
       if (!isPracticeMode) {
-        const score = questions.length > 0 ? finalCorrect / questions.length : 1
+        const rawScore = questions.length > 0 ? finalCorrect / questions.length : 1
+        const score = Math.max(0, rawScore - latePenalty / 100)
         const dueAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
         const newLevelsCompleted = levelsCompleted + 1
         const newCurrentLevel = currentLevelNumber + 1
@@ -267,6 +273,7 @@ export default function LessonPage() {
           assignment_id: assignmentId,
           student_id: user.id,
           accuracy: acc,
+          adjusted_accuracy: adjustedAcc,
           completed_at: new Date().toISOString(),
         }, { onConflict: 'assignment_id,student_id', ignoreDuplicates: true })
       }
