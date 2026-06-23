@@ -13,8 +13,8 @@ function computeVisible(a) {
     const raw = localStorage.getItem(DISMISS_KEY)
     if (!raw) return true
     const saved = JSON.parse(raw)
-    if (saved.version !== a.updated_at) return true          // edited since dismissed
-    if (Date.now() - saved.dismissedAt > TWELVE_HOURS) return true  // 12h elapsed
+    if (saved.version !== a.updated_at) return true
+    if (Date.now() - saved.dismissedAt > TWELVE_HOURS) return true
     return false
   } catch {
     return true
@@ -43,7 +43,6 @@ export default function Announcement() {
     }
     load()
 
-    // Re-check every minute so the 12h timer fires on long-open tabs
     const interval = setInterval(() => {
       setVisible((v) => (v ? v : computeVisible(aRef.current)))
     }, 60 * 1000)
