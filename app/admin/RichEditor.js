@@ -14,13 +14,14 @@ import { TableHeader } from '@tiptap/extension-table-header'
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Placeholder } from '@tiptap/extensions'
-
+import { InlineMath } from '@/lib/math/InlineMath'
 export default function RichEditor({ value, onChange, collapsible = false, collapsedHeight = 44, minHeight = 300, placeholder = '' }) {
   const [focused, setFocused] = useState(false)
   const wrapRef = useRef(null)
   const editor = useEditor({
     extensions: [
       StarterKit,
+      InlineMath, 
       Underline,
       Link.configure({
         openOnClick: false,
@@ -285,13 +286,17 @@ export default function RichEditor({ value, onChange, collapsible = false, colla
           <ToolbarBtn onClick={addImage} disabled={uploadingImage} title="Upload an image from your computer">
             🖼 {uploadingImage ? 'Uploading…' : 'Image'}
           </ToolbarBtn>
-          <ToolbarBtn onClick={addYoutube} title="Insert YouTube video">
+           <ToolbarBtn onClick={addYoutube} title="Insert YouTube video">
             ▶ Video
           </ToolbarBtn>
         </ToolbarGroup>
 
         <Sep />
-
+        <ToolbarGroup>
+          <ToolbarBtn onClick={() => editor.chain().focus().insertInlineMath().run()} title="Insert math (π, ∫, powers, fractions…)">
+            ∑ Math
+          </ToolbarBtn>
+        </ToolbarGroup>
         {/* Table controls */}
         <ToolbarGroup>
           <TableInsertBtn editor={editor} />

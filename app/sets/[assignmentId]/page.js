@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import { computeLatePenalty } from '@/lib/latePenalty'
+import { MathHTML, MathText } from '@/lib/math/MathRender'
 
 const isPast = (iso) => !!iso && new Date(iso).getTime() < Date.now()
 
@@ -179,7 +180,7 @@ export default function CustomSetPage() {
       <div className="flex-1 flex flex-col">
         <div className="flex-1 max-w-2xl w-full mx-auto p-5 md:p-8">
           <p className="text-xs font-mono tracking-widest uppercase mb-3" style={{ color: '#00b395' }}>// {assignment.title}</p>
-          <div className="text-2xl font-black tracking-tight mb-6 leading-snug prose prose-xl max-w-none prose-headings:font-black prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900" dangerouslySetInnerHTML={{ __html: item.stem || '' }} />
+          <MathHTML className="text-2xl font-black tracking-tight mb-6 leading-snug prose prose-xl max-w-none prose-headings:font-black prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900" html={item.stem || ''} />
           {item.explanation && <div className="text-xs text-gray-700 leading-relaxed prose prose-sm max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900" dangerouslySetInnerHTML={{ __html: item.explanation }} />}
           <div className="flex flex-col gap-3">
             {item.choices.map((c, i) => {
@@ -201,7 +202,7 @@ export default function CustomSetPage() {
                   style={style}
                 >
                   <span className="w-8 h-8 shrink-0 border-2 border-gray-900 rounded-lg flex items-center justify-center text-sm font-black bg-white">{String.fromCharCode(65 + i)}</span>
-                  <span className="flex-1">{c}</span>
+                  <MathText className="flex-1" text={c} />
                   {checked && isAns && <span className="text-green-700 font-black">✓</span>}
                   {checked && isSel && !isAns && <span className="text-red-700 font-black">✕</span>}
                 </button>

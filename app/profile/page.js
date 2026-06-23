@@ -29,6 +29,12 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)
+  const [hasPassword, setHasPassword] = useState(false) // is a password set? (from server)
+
+  // Delete-account state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteText, setDeleteText] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -56,6 +62,11 @@ export default function ProfilePage() {
         if (c && !seen[c.id]) { seen[c.id] = true; list.push(c) }
       }
       setCourses(list)
+
+      // Does this account have a password? Reliable server check — the `email`
+      // identity isn't always added when a Google user sets one.
+      const { data: hp } = await supabase.rpc('current_user_has_password')
+      setHasPassword(!!hp)
 
       setLoading(false)
     }
@@ -147,9 +158,22 @@ export default function ProfilePage() {
     setNewPassword('')
     setConfirmPassword('')
     setShowPwForm(false)
+    setHasPassword(true)
     flash('success', 'Password saved! You can now sign in with your email and this password.')
   }
 
+  async function handleDeleteAccount() {
+    setDeleting(true)
+    const { error } = await supabase.rpc('delete_my_account')
+    if (error) {
+      setDeleting(false)
+      flash('error', 'Could not delete account: ' + error.message)
+      return
+    }
+    // Account and login are gone — clear the local session and head home.
+    await supabase.auth.signOut()
+    router.push('/')
+  }
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#f6fbf8' }}>
@@ -164,8 +188,11 @@ export default function ProfilePage() {
 
   // Which sign-in methods this account already has.
   const providers = user?.identities?.map((i) => i.provider) || []
-  const hasEmailLogin = providers.includes('email')
   const usesGoogle = providers.includes('google')
+  // "Create password" vs "Change password" is driven by whether a password
+  // actually exists — the `email` identity isn't reliably added when a Google
+  // user sets one, so identities alone can't tell us.
+  const hasEmailLogin = hasPassword
 
   return (
     <div className="min-h-screen" style={{ background: '#f6fbf8' }}>
@@ -416,7 +443,63 @@ export default function ProfilePage() {
             })}
           </div>
         )}
+
+        {/* Danger zone */}
+        <div className="bg-white border-[3px] border-red-600 rounded-2xl p-6 md:p-8 shadow-[6px_6px_0_#dc2626] mt-8">
+          <h2 className="text-xl font-black tracking-tight text-red-700">Delete account</h2>
+          <p className="text-sm text-gray-600 mt-1 max-w-md">
+            Permanently delete your account and all of your data. This can&apos;t be undone.
+          </p>
+          <button
+            onClick={() => { setShowDeleteConfirm(true); setDeleteText('') }}
+            className="mt-4 px-4 py-2 text-white border-2 border-gray-900 rounded-full text-sm font-bold shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all"
+            style={{ background: '#dc2626' }}
+          >
+            Delete account
+          </button>
+        </div>
       </div>
+
+      {/* Delete-account confirmation */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/40">
+          <div className="bg-white border-[3px] border-gray-900 rounded-2xl p-6 md:p-7 shadow-[6px_6px_0_#1a1d29] max-w-md w-full">
+            <h3 className="text-xl font-black tracking-tight text-red-700">Are you sure?</h3>
+            <p className="text-sm text-gray-700 mt-3">
+              All your progress will be lost <span className="font-black">forever</span>, including for the
+              courses you&apos;re taking. Your instructor will no longer be able to see any of your
+              completions. This cannot be undone.
+            </p>
+            <p className="text-xs font-mono tracking-widest uppercase text-gray-500 mt-5 mb-1">
+              Type DELETE to confirm
+            </p>
+            <input
+              value={deleteText}
+              onChange={(e) => setDeleteText(e.target.value)}
+              placeholder="DELETE"
+              className="w-full p-3 border-[2.5px] border-gray-900 rounded-xl font-medium focus:outline-none focus:bg-white"
+              style={{ background: '#f6fbf8' }}
+            />
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting || deleteText.trim().toUpperCase() !== 'DELETE'}
+                className="px-5 py-2.5 text-white border-2 border-gray-900 rounded-xl font-bold shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all disabled:opacity-50"
+                style={{ background: '#dc2626' }}
+              >
+                {deleting ? 'Deleting…' : 'Delete my account'}
+              </button>
+              <button
+                onClick={() => { setShowDeleteConfirm(false); setDeleteText('') }}
+                disabled={deleting}
+                className="px-5 py-2.5 bg-white border-2 border-gray-900 rounded-xl font-bold shadow-[3px_3px_0_#1a1d29] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

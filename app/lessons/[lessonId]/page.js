@@ -5,6 +5,7 @@ import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { computeLatePenalty } from '@/lib/latePenalty'
+import { MathHTML, MathText } from '@/lib/math/MathRender'
 
 export default function LessonPage() {
   const router = useRouter()
@@ -498,8 +499,7 @@ export default function LessonPage() {
                   </span>
                 )}
               </div>
-              <div className="bg-white border-l-4 px-4 py-3 mb-4 rounded-r-xl prose prose-base max-w-none prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900" style={{ borderColor: '#00b395' }}
-                dangerouslySetInnerHTML={{ __html: item.stem || '' }} />
+              <MathHTML className="bg-white border-l-4 px-4 py-3 mb-4 rounded-r-xl prose prose-base max-w-none prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900" style={{ borderColor: '#00b395' }} html={item.stem || ''} />
               <div className="flex flex-col gap-2 mb-4">
                 {item.choices.map((c, i) => {
                   let cls = 'bg-white border-[2px] border-gray-900 rounded-xl px-4 py-3 shadow-[3px_3px_0_#1a1d29] text-left flex items-center gap-3 text-sm font-medium transition-all'
@@ -515,7 +515,8 @@ export default function LessonPage() {
                   return (
                     <button key={i} className={cls} onClick={() => !checked && setSelected(i)} disabled={checked}>
                       <span className="w-7 h-7 border-2 border-gray-900 rounded-lg bg-white flex items-center justify-center font-black text-xs flex-shrink-0">{String.fromCharCode(65 + i)}</span>
-                      <span>{c}</span>
+                      <MathText text={c} />
+
                     </button>
                   )
                 })}

@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import MyClasses from './MyClasses'
 import ClassCourseModal from './ClassCourseModal'
+import Announcement from './Announcement'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -135,6 +136,8 @@ export default function DashboardPage() {
           {toast}
         </div>
       )}
+
+      <Announcement />
 
       {/* Top bar */}
       <div className="border-b-[3px] border-gray-900 px-4 md:px-6 py-3 flex items-center justify-between gap-2" style={{ background: '#b4f1e7' }}>

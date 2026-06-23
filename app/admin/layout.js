@@ -79,6 +79,7 @@ export default function AdminLayout({ children }) {
     { href: '/admin/contributors', label: 'Contributors', icon: '👥', adminOnly: true },
     { href: '/admin/teacher-codes', label: 'Teacher Access', icon: '🎟', adminOnly: true },
     { href: '/admin/analytics', label: 'Analytics', icon: '📊', adminOnly: true },
+    { href: '/admin/announcement', label: 'Announcement', icon: '📣', adminOnly: true },
   ].filter((item) => !item.adminOnly || isAdmin)
 
   return (

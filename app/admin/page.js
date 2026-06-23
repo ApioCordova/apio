@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import RichEditor from './RichEditor'
+import { MathHTML, MathText } from '@/lib/math/MathRender'
+import { ChoiceMathButton } from '@/lib/math/MathRender'
 
 export default function AdminContentPage() {
   const [courses, setCourses] = useState([])
@@ -432,6 +434,7 @@ export default function AdminContentPage() {
       <input type="radio" name="correct-modal" checked={editDraft.answer === i} onChange={() => setEditDraft({ ...editDraft, answer: i })} className="w-6 h-6 cursor-pointer flex-shrink-0" style={{ accentColor: '#00b395' }} />
       <span className="w-9 h-9 border-2 border-gray-900 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0" style={editDraft.answer === i ? { background: '#00b395', color: 'white' } : { background: 'white' }}>{String.fromCharCode(65 + i)}</span>
       <input type="text" placeholder={`Option ${String.fromCharCode(65 + i)}`} value={choice} onChange={(e) => { const c = [...editDraft.choices]; c[i] = e.target.value; setEditDraft({ ...editDraft, choices: c }) }} className="flex-1 p-3 border-2 border-gray-900 rounded-lg bg-white text-base" />
+      <ChoiceMathButton value={choice} onChange={(next) => { const c = [...editDraft.choices]; c[i] = next; setEditDraft({ ...editDraft, choices: c }) }} />
       <button type="button" onClick={() => { if (editDraft.choices.length <= 2) { alert('Minimum 2 choices.'); return }; const nc = editDraft.choices.filter((_, idx) => idx !== i); const nce = (editDraft.choice_explanations || []).filter((_, idx) => idx !== i); let na = editDraft.answer; if (na === i) na = 0; else if (na > i) na--; setEditDraft({ ...editDraft, choices: nc, choice_explanations: nce, answer: na }) }} className="px-3 py-2 text-red-600 hover:bg-red-100 rounded-lg" disabled={editDraft.choices.length <= 2}>🗑</button>
     </div>
     <div className="mt-2">
@@ -946,7 +949,7 @@ function ItemCard({ index, item, isFirst, isLast, onEdit, onDelete, onStatusChan
           <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 text-xs">
             {item.choices.map((c, i) => (
               <div key={i} className={`px-2 py-1.5 rounded flex items-center gap-1.5 ${i === item.answer ? 'bg-green-100 text-green-900 font-bold' : 'bg-gray-50 text-gray-700'}`}>
-                <span className="font-black">{String.fromCharCode(65 + i)}.</span><span className="flex-1">{c}</span>{i === item.answer && <span>✓</span>}
+                <span className="font-black">{String.fromCharCode(65 + i)}.</span><MathText className="flex-1" text={c} />{i === item.answer && <span>✓</span>}
               </div>
             ))}
           </div>
