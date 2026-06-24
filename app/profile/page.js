@@ -164,6 +164,20 @@ export default function ProfilePage() {
 
   async function handleDeleteAccount() {
     setDeleting(true)
+
+    // Remove the user's avatar files first. Supabase won't delete an auth user
+    // who still owns Storage objects, and storage rows can't be deleted from SQL.
+    try {
+      const { data: files } = await supabase.storage.from('avatars').list(user.id)
+      if (files?.length) {
+        await supabase.storage
+          .from('avatars')
+          .remove(files.map((f) => `${user.id}/${f.name}`))
+      }
+    } catch {
+      // Non-fatal — proceed to the account delete either way.
+    }
+
     const { error } = await supabase.rpc('delete_my_account')
     if (error) {
       setDeleting(false)
@@ -185,6 +199,9 @@ export default function ProfilePage() {
   const displayName = profile?.full_name || user?.email?.split('@')[0]
   const initials = (displayName || '?').trim().charAt(0).toUpperCase()
   const shownAvatar = editing ? avatarUrl : profile?.avatar_url
+  // The primary admin account can never be deleted.
+  const canDeleteAccount =
+    (profile?.email || user?.email || '').toLowerCase() !== 'demiancordova@cordovaibe.com'
 
   // Which sign-in methods this account already has.
   const providers = user?.identities?.map((i) => i.provider) || []
@@ -445,6 +462,7 @@ export default function ProfilePage() {
         )}
 
         {/* Danger zone */}
+        {canDeleteAccount && (
         <div className="bg-white border-[3px] border-red-600 rounded-2xl p-6 md:p-8 shadow-[6px_6px_0_#dc2626] mt-8">
           <h2 className="text-xl font-black tracking-tight text-red-700">Delete account</h2>
           <p className="text-sm text-gray-600 mt-1 max-w-md">
@@ -458,6 +476,7 @@ export default function ProfilePage() {
             Delete account
           </button>
         </div>
+        )}
       </div>
 
       {/* Delete-account confirmation */}
