@@ -108,3 +108,37 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .apio-popup-shake { animation: none; }
 }
+/* Animated rainbow border for the lesson pop-up card */
+@property --apio-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes apio-rainbow-spin {
+  to { --apio-angle: 360deg; }
+}
+
+.apio-popup-rainbow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 4px;                 /* rainbow border thickness */
+  background: conic-gradient(
+    from var(--apio-angle),
+    #ff2d55, #ff9500, #ffd60a, #34c759,
+    #00c7be, #0a84ff, #5e5ce6, #bf5af2, #ff2d55
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  animation: apio-rainbow-spin 1.5s linear 2;  /* ~3s total, then stops */
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apio-popup-rainbow::before { animation: none; }
+}
