@@ -521,6 +521,13 @@ export default function LessonPage() {
                   )
                 })}
               </div>
+
+              {checked && item.popup && (
+                <div className="apio-popup-shake bg-white border-[3px] border-gray-900 rounded-2xl px-5 py-4 mb-4 shadow-[5px_5px_0_#1a1d29]">
+                  <p className="text-[11px] font-mono tracking-widest uppercase font-black mb-2" style={{ color: '#00b395' }}>// good to know</p>
+                  <div className="text-sm text-gray-800 leading-relaxed prose prose-base max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900" dangerouslySetInnerHTML={{ __html: item.popup }} />
+                </div>
+              )}
             </div>
           </div>
 

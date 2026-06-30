@@ -105,8 +105,10 @@ export default function AdminContentPage() {
 
   async function saveAndCloseQuestion() {
     const ce = (editDraft.choices || []).map((_, i) => (editDraft.choice_explanations || [])[i] || '')
+    const popupRaw = editDraft.popup || ''
+    const popupHasContent = popupRaw.replace(/<[^>]*>/g, '').trim().length > 0 || /<(img|iframe|table|svg)\b/i.test(popupRaw)
     const { error } = await supabase.from('questions').update({
-      stem: editDraft.stem, choices: editDraft.choices, choice_explanations: ce, answer: editDraft.answer, explanation: editDraft.explanation, difficulty: editDraft.difficulty || null, in_problem_set: !!editDraft.in_problem_set,
+      stem: editDraft.stem, choices: editDraft.choices, choice_explanations: ce, answer: editDraft.answer, explanation: editDraft.explanation, difficulty: editDraft.difficulty || null, in_problem_set: !!editDraft.in_problem_set, popup: popupHasContent ? popupRaw : null,
     }).eq('id', editDraft.id)
     if (error) { showToast('Save failed: ' + error.message); return }
     showToast('✓ Question saved'); closeEditor(); await loadItems(selectedLessonId)
@@ -504,6 +506,12 @@ export default function AdminContentPage() {
                           </button>
                         ))}
                       </div>
+                    </Field>
+                  </div>
+                  <div className="mt-6">
+                    <Field label="Pop-up note (optional)">
+                      <p className="text-xs text-gray-500 mb-2">Shown to the student in a card after they check their answer, alongside the explanation. Leave empty for no pop-up.</p>
+                      <RichEditor placeholder="Add an optional pop-up note students see after answering…" value={editDraft.popup || ''} onChange={(html) => setEditDraft({ ...editDraft, popup: html })} />
                     </Field>
                   </div>
                 </>
