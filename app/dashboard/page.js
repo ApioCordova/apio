@@ -297,7 +297,7 @@ export default function DashboardPage() {
           onClick={() => setPickerOpen(false)}
         >
           <div
-            className="w-full max-w-2xl bg-white border-[3px] border-gray-900 rounded-2xl shadow-[8px_8px_0_#1a1d29] my-auto"
+            className="w-full max-w-4xl bg-white border-[3px] border-gray-900 rounded-2xl shadow-[8px_8px_0_#1a1d29] my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3 px-6 py-4 border-b-[3px] border-gray-900">
@@ -308,32 +308,34 @@ export default function DashboardPage() {
               <button onClick={() => setPickerOpen(false)} className="w-9 h-9 border-2 border-gray-900 rounded-full bg-white flex items-center justify-center font-bold shadow-[2px_2px_0_#1a1d29]" aria-label="Close">✕</button>
             </div>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6">
               {catalog.length === 0 && (
                 <p className="text-gray-600 text-sm">No courses are available yet. Check back soon!</p>
               )}
 
-              {grouped.map(({ section, courses }) => (
-                <div key={section.id}>
-                  <p className="text-xs font-mono tracking-widest uppercase text-gray-500 mb-2">{section.name}</p>
-                  <div className="space-y-2">
-                    {courses.map((c) => (
-                      <PickerRow key={c.id} course={c} added={addedIds.has(c.id)} onToggle={() => toggleCourse(c.id)} tone={toneOf(c)} />
-                    ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 items-start">
+                {grouped.map(({ section, courses }) => (
+                  <div key={section.id}>
+                    <p className="text-xs font-mono tracking-widest uppercase text-gray-500 mb-2">{section.name}</p>
+                    <div className="space-y-2">
+                      {courses.map((c) => (
+                        <PickerRow key={c.id} course={c} added={addedIds.has(c.id)} onToggle={() => toggleCourse(c.id)} tone={toneOf(c)} />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
 
-              {ungrouped.length > 0 && (
-                <div>
-                  <p className="text-xs font-mono tracking-widest uppercase text-gray-500 mb-2">Other</p>
-                  <div className="space-y-2">
-                    {ungrouped.map((c) => (
-                      <PickerRow key={c.id} course={c} added={addedIds.has(c.id)} onToggle={() => toggleCourse(c.id)} tone={toneOf(c)} />
-                    ))}
+                {ungrouped.length > 0 && (
+                  <div>
+                    <p className="text-xs font-mono tracking-widest uppercase text-gray-500 mb-2">Other</p>
+                    <div className="space-y-2">
+                      {ungrouped.map((c) => (
+                        <PickerRow key={c.id} course={c} added={addedIds.has(c.id)} onToggle={() => toggleCourse(c.id)} tone={toneOf(c)} />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             <div className="px-6 py-4 border-t-[3px] border-gray-900 flex justify-end">
@@ -349,6 +351,12 @@ export default function DashboardPage() {
 }
 
 function PickerRow({ course, added, onToggle, tone }) {
+  function handleRemove() {
+    if (confirm(`Remove "${course.title}" from your courses? Any progress in this course may be lost.`)) {
+      onToggle()
+    }
+  }
+
   return (
     <div className="flex items-center gap-3 border-2 border-gray-900 rounded-xl p-3 bg-white">
       <div className="w-10 h-10 rounded-lg border-2 border-gray-900 flex items-center justify-center text-lg shrink-0" style={{ background: `${tone}33` }}>
@@ -358,13 +366,30 @@ function PickerRow({ course, added, onToggle, tone }) {
         <p className="font-black tracking-tight truncate">{course.title}</p>
         {course.short_title && <p className="text-xs font-mono text-gray-500 truncate">{course.short_title}</p>}
       </div>
-      <button
-        onClick={onToggle}
-        className={`px-3 py-1.5 rounded-full border-2 border-gray-900 text-xs font-black uppercase tracking-wide shadow-[2px_2px_0_#1a1d29] transition-all ${added ? 'bg-white' : 'text-white'}`}
-        style={!added ? { background: '#00b395' } : {}}
-      >
-        {added ? 'Added ✓' : '+ Add'}
-      </button>
+
+      {added ? (
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="px-3 py-1.5 rounded-full border-2 border-gray-900 bg-white text-xs font-black uppercase tracking-wide shadow-[2px_2px_0_#1a1d29]">
+            Added ✓
+          </span>
+          <button
+            onClick={handleRemove}
+            aria-label={`Remove ${course.title}`}
+            title="Remove course"
+            className="w-8 h-8 flex items-center justify-center rounded-full border-2 border-gray-900 bg-white text-red-600 shadow-[2px_2px_0_#1a1d29] hover:bg-red-50 hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[3px_3px_0_#1a1d29] transition-all"
+          >
+            🗑
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={onToggle}
+          className="px-3 py-1.5 rounded-full border-2 border-gray-900 text-white text-xs font-black uppercase tracking-wide shadow-[2px_2px_0_#1a1d29] transition-all shrink-0"
+          style={{ background: '#00b395' }}
+        >
+          + Add
+        </button>
+      )}
     </div>
   )
 }
