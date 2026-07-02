@@ -39,7 +39,7 @@ export default function LessonPage() {
   const [itemIndex, setItemIndex] = useState(0)
   const [selected, setSelected] = useState(null)
   const [checked, setChecked] = useState(false)
-  const [correctCount, setCorrectCount] = useState(0)
+  const [answers, setAnswers] = useState({})   // { [itemId]: { selected, checked } } — frozen answers for this level
   const [completed, setCompleted] = useState(false)
   const [assignment, setAssignment] = useState(null)
 
@@ -88,7 +88,7 @@ export default function LessonPage() {
       // Load user's progress for this lesson
       const { data: progressData } = await supabase
         .from('progress')
-        .select('levels_completed, current_level')
+        .select('levels_completed, current_level, resume_index, resume_answers')
         .eq('user_id', user.id)
         .eq('lesson_id', lessonId)
         .single()
@@ -158,6 +158,18 @@ export default function LessonPage() {
           ...lessonRs.map(r => ({ ...r, _kind: 'reading' })),
         ].sort((a, b) => a.sort_order - b.sort_order)
         setItems(combined)
+
+        // Resume exactly where the student stopped, with their answers frozen.
+        if (!isReview && combined.length > 0) {
+          const savedAnswers = progressData?.resume_answers || {}
+          const savedIndex = Math.min(Math.max(progressData?.resume_index || 0, 0), combined.length - 1)
+          setAnswers(savedAnswers)
+          setItemIndex(savedIndex)
+          const resumeItem = combined[savedIndex]
+          const savedForItem = resumeItem ? savedAnswers[resumeItem.id] : null
+          if (savedForItem) { setSelected(savedForItem.selected); setChecked(!!savedForItem.checked) }
+        }
+
         setLoading(false)
       }
     }
@@ -192,20 +204,55 @@ export default function LessonPage() {
     }
     setItems(picked.map(q => ({ ...q, _kind: 'question' })))
     setPracticeSetupNeeded(false)
-    setItemIndex(0); setSelected(null); setChecked(false); setCorrectCount(0)
+    setItemIndex(0); setSelected(null); setChecked(false); setAnswers({})
   }
 
   const item = items[itemIndex]
+
+  // Derived from the frozen map, so revisiting a question never double-counts it.
+  const correctCount = items.filter(
+    (it) => it._kind === 'question' && answers[it.id]?.checked && answers[it.id].selected === it.answer
+  ).length
+
+  // Persist the student's spot + answers. No-op in practice (random pool) and review (read-only).
+  async function persistResume(index, map) {
+    if (isPracticeMode || isReview || !user) return
+    await supabase.from('progress').upsert({
+      user_id: user.id,
+      lesson_id: lessonId,
+      current_level: currentLevelNumber,
+      resume_index: index,
+      resume_answers: map,
+    }, { onConflict: 'user_id,lesson_id' })
+  }
+
+  // Move to an item, restoring its frozen answer. If it was already checked,
+  // hydrating checked=true auto-locks the choices and re-shows the explanation.
+  function goTo(newIndex) {
+    if (newIndex < 0 || newIndex >= items.length) return
+    const it = items[newIndex]
+    const saved = it ? answers[it.id] : null
+    setItemIndex(newIndex)
+    setSelected(saved ? saved.selected : null)
+    setChecked(saved ? !!saved.checked : false)
+    persistResume(newIndex, answers)
+  }
+
+  function goBack() {
+    if (itemIndex > 0) goTo(itemIndex - 1)
+  }
 
   async function logAttempt(questionId, wasCorrect, selectedIndex) {
   await supabase.from('question_attempts').insert({ user_id: user.id, question_id: questionId, was_correct: wasCorrect, selected_index: selectedIndex })
 }
 
   async function onCheck() {
-    if (selected === null) return
+    if (selected === null || checked) return
     setChecked(true)
     const wasCorrect = selected === item.answer
-    if (wasCorrect) setCorrectCount(c => c + 1)
+    const nextAnswers = { ...answers, [item.id]: { selected, checked: true } }
+    setAnswers(nextAnswers)
+    persistResume(itemIndex, nextAnswers)
     await logAttempt(item.id, wasCorrect, selected)
 
     // Practice mode: persist mastery. Correct = mastered (box 5), wrong = stays in pool (box 1).
@@ -232,10 +279,9 @@ export default function LessonPage() {
 
   async function onContinue() {
     if (itemIndex + 1 < items.length) {
-      setItemIndex(itemIndex + 1); setSelected(null); setChecked(false)
+      goTo(itemIndex + 1)
     } else {
       const questions = items.filter(i => i._kind === 'question')
-      const finalCorrect = correctCount + (item._kind === 'question' && selected === item.answer ? 1 : 0)
       const acc = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 100
 
       // In review mode we never write anything — just exit back to the class.
@@ -248,7 +294,7 @@ export default function LessonPage() {
       let assignmentDone = isPracticeMode  // problem sets finish in a single session
 
       if (!isPracticeMode) {
-        const rawScore = questions.length > 0 ? finalCorrect / questions.length : 1
+        const rawScore = questions.length > 0 ? correctCount / questions.length : 1
         const score = Math.max(0, rawScore - latePenalty / 100)
         const dueAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString()
         const newLevelsCompleted = levelsCompleted + 1
@@ -262,6 +308,8 @@ export default function LessonPage() {
           due_at: dueAt,
           levels_completed: newLevelsCompleted,
           current_level: newCurrentLevel,
+          resume_index: 0,
+          resume_answers: {},
         }, { onConflict: 'user_id,lesson_id' })
 
         setLevelsCompleted(newLevelsCompleted)
@@ -285,7 +333,7 @@ export default function LessonPage() {
 
   function onReadingNext() {
     if (itemIndex + 1 < items.length) {
-      setItemIndex(itemIndex + 1); setSelected(null); setChecked(false)
+      goTo(itemIndex + 1)
     } else { onContinue() }
   }
 
@@ -459,6 +507,9 @@ export default function LessonPage() {
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#f6fbf8' }}>
       <div className="border-b-[2px] border-gray-900 px-4 py-2 flex items-center gap-4 flex-shrink-0" style={{ background: '#b4f1e7' }}>
         <Link href={assignment?.class_id ? `/classes/${assignment.class_id}` : (course ? `/courses/${course.id}` : '/dashboard')} className="w-8 h-8 border-2 border-gray-900 rounded-full bg-white flex items-center justify-center text-sm font-bold shadow-[2px_2px_0_#1a1d29]" aria-label="Close">✕</Link>
+        {!isPracticeMode && itemIndex > 0 && (
+          <button onClick={goBack} className="w-8 h-8 border-2 border-gray-900 rounded-full bg-white flex items-center justify-center text-sm font-bold shadow-[2px_2px_0_#1a1d29]" aria-label="Previous">←</button>
+        )}
         <div className="flex-1 h-3 bg-white border-2 border-gray-900 rounded-full overflow-hidden">
           <div className="h-full transition-all duration-500" style={{ width: `${progress}%`, background: '#00b395' }} />
         </div>
