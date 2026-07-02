@@ -450,6 +450,10 @@ export default function LessonPage() {
   // ============ MAIN VIEW ============
   const progress = ((itemIndex + (checked || item._kind === 'reading' ? 1 : 0)) / items.length) * 100
   const isCorrect = item._kind === 'question' && selected === item.answer
+  const explanationHtml = item._kind === 'question'
+    ? (((item.choice_explanations || [])[selected]) || item.explanation || '')
+    : ''
+  const showExplainPanel = checked && item._kind === 'question' && !!explanationHtml
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#f6fbf8' }}>
@@ -485,50 +489,77 @@ export default function LessonPage() {
         </>
       ) : (
         <>
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-2xl w-full mx-auto px-5 py-5">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <p className="text-xs font-mono tracking-widest uppercase" style={{ color: '#00b395' }}>
-                  // {isPracticeMode ? 'Practice' : lesson.title} {!isPracticeMode && maxLevels > 1 ? `· Level ${currentLevelNumber}` : ''} — Q {itemIndex + 1} of {items.length}
-                </p>
-                {item.difficulty && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border-2 border-gray-900 text-white" style={{
-                    background: item.difficulty === 'easy' ? '#22c55e' : item.difficulty === 'medium' ? '#eab308' : item.difficulty === 'difficult' ? '#f97316' : '#ef4444'
-                  }}>
-                    {item.difficulty === 'very_difficult' ? 'VERY HARD' : item.difficulty.toUpperCase()}
-                  </span>
+          <div className="flex-1 flex min-h-0">
+            {/* LEFT: question + choices (full width until checked, half on md+ once the panel opens) */}
+            <div className="flex-1 overflow-y-auto min-w-0">
+              <div className="max-w-2xl w-full mx-auto px-5 py-5">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <p className="text-xs font-mono tracking-widest uppercase" style={{ color: '#00b395' }}>
+                    // {isPracticeMode ? 'Practice' : lesson.title} {!isPracticeMode && maxLevels > 1 ? `· Level ${currentLevelNumber}` : ''} — Q {itemIndex + 1} of {items.length}
+                  </p>
+                  {item.difficulty && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider border-2 border-gray-900 text-white" style={{
+                      background: item.difficulty === 'easy' ? '#22c55e' : item.difficulty === 'medium' ? '#eab308' : item.difficulty === 'difficult' ? '#f97316' : '#ef4444'
+                    }}>
+                      {item.difficulty === 'very_difficult' ? 'VERY HARD' : item.difficulty.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <MathHTML className="bg-white border-l-4 px-4 py-3 mb-4 rounded-r-xl prose prose-base max-w-none prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900" style={{ borderColor: '#00b395' }} html={item.stem || ''} />
+                <div className="flex flex-col gap-2 mb-4">
+                  {item.choices.map((c, i) => {
+                    let cls = 'bg-white border-[2px] border-gray-900 rounded-xl px-4 py-3 shadow-[3px_3px_0_#1a1d29] text-left flex items-center gap-3 text-sm font-medium transition-all'
+                    if (checked) {
+                      if (i === item.answer) cls = 'bg-green-200 border-[2px] border-green-700 rounded-xl px-4 py-3 shadow-[3px_3px_0_#1a1d29] text-left flex items-center gap-3 text-sm font-medium'
+                      else if (i === selected) cls = 'bg-red-200 border-[2px] border-red-700 rounded-xl px-4 py-3 shadow-[3px_3px_0_#1a1d29] text-left flex items-center gap-3 text-sm font-medium'
+                      else cls += ' opacity-40'
+                    } else if (i === selected) {
+                      cls = 'bg-emerald-100 border-[2px] border-gray-900 rounded-xl px-4 py-3 shadow-[3px_3px_0_#1a1d29] text-left flex items-center gap-3 text-sm font-medium'
+                    } else {
+                      cls += ' hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] cursor-pointer'
+                    }
+                    return (
+                      <button key={i} className={cls} onClick={() => !checked && setSelected(i)} disabled={checked}>
+                        <span className="w-7 h-7 border-2 border-gray-900 rounded-lg bg-white flex items-center justify-center font-black text-xs flex-shrink-0">{String.fromCharCode(65 + i)}</span>
+                        <MathText text={c} />
+
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {checked && item.popup && (
+                  <div className="apio-popup-shake apio-popup-rainbow relative bg-white rounded-2xl px-5 py-4 mt-3 mb-4 shadow-[5px_5px_0_#1a1d29]">
+                    <p className="text-[11px] font-mono tracking-widest uppercase font-black mb-2" style={{ color: '#00b395' }}>PRO TIP</p>
+                    <div className="text-sm text-gray-800 leading-relaxed prose prose-base max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900" dangerouslySetInnerHTML={{ __html: item.popup }} />
+                  </div>
+                )}
+
+                {/* Mobile: explanation appears inline below the choices */}
+                {showExplainPanel && (
+                  <div className={`md:hidden apio-panel-in border-[2.5px] border-gray-900 rounded-2xl px-4 py-4 mb-4 shadow-[4px_4px_0_#1a1d29] ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}>
+                    <p className="text-[11px] font-mono tracking-widest uppercase font-black mb-1" style={{ color: isCorrect ? '#16a34a' : '#dc2626' }}>// explanation</p>
+                    <h3 className={`text-lg font-black mb-2 ${isReview ? 'text-gray-900' : isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+                      {isReview ? 'Correct answer' : isCorrect ? 'Excellent.' : 'Not quite.'}
+                    </h3>
+                    <MathHTML className="text-sm text-gray-800 leading-relaxed prose prose-base max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900" html={explanationHtml} />
+                  </div>
                 )}
               </div>
-              <MathHTML className="bg-white border-l-4 px-4 py-3 mb-4 rounded-r-xl prose prose-base max-w-none prose-img:rounded-xl prose-img:border-2 prose-img:border-gray-900" style={{ borderColor: '#00b395' }} html={item.stem || ''} />
-              <div className="flex flex-col gap-2 mb-4">
-                {item.choices.map((c, i) => {
-                  let cls = 'bg-white border-[2px] border-gray-900 rounded-xl px-4 py-3 shadow-[3px_3px_0_#1a1d29] text-left flex items-center gap-3 text-sm font-medium transition-all'
-                  if (checked) {
-                    if (i === item.answer) cls = 'bg-green-200 border-[2px] border-green-700 rounded-xl px-4 py-3 shadow-[3px_3px_0_#1a1d29] text-left flex items-center gap-3 text-sm font-medium'
-                    else if (i === selected) cls = 'bg-red-200 border-[2px] border-red-700 rounded-xl px-4 py-3 shadow-[3px_3px_0_#1a1d29] text-left flex items-center gap-3 text-sm font-medium'
-                    else cls += ' opacity-40'
-                  } else if (i === selected) {
-                    cls = 'bg-emerald-100 border-[2px] border-gray-900 rounded-xl px-4 py-3 shadow-[3px_3px_0_#1a1d29] text-left flex items-center gap-3 text-sm font-medium'
-                  } else {
-                    cls += ' hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[4px_4px_0_#1a1d29] cursor-pointer'
-                  }
-                  return (
-                    <button key={i} className={cls} onClick={() => !checked && setSelected(i)} disabled={checked}>
-                      <span className="w-7 h-7 border-2 border-gray-900 rounded-lg bg-white flex items-center justify-center font-black text-xs flex-shrink-0">{String.fromCharCode(65 + i)}</span>
-                      <MathText text={c} />
-
-                    </button>
-                  )
-                })}
-              </div>
-
-              {checked && item.popup && (
-                <div className="apio-popup-shake apio-popup-rainbow relative bg-white rounded-2xl px-5 py-4 mt-3 mb-4 shadow-[5px_5px_0_#1a1d29]">
-                  <p className="text-[11px] font-mono tracking-widest uppercase font-black mb-2" style={{ color: '#00b395' }}>PRO TIP</p>
-                  <div className="text-sm text-gray-800 leading-relaxed prose prose-base max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900" dangerouslySetInnerHTML={{ __html: item.popup }} />
-                </div>
-              )}
             </div>
+
+            {/* RIGHT (md+): explanation takes over the right half */}
+            {showExplainPanel && (
+              <aside className={`hidden md:block md:w-1/2 apio-panel-in border-l-[3px] border-gray-900 overflow-y-auto ${isCorrect ? 'bg-green-50' : 'bg-red-50'}`}>
+                <div className="max-w-xl mx-auto px-6 py-8">
+                  <p className="text-xs font-mono tracking-widest uppercase font-black mb-2" style={{ color: isCorrect ? '#16a34a' : '#dc2626' }}>// explanation</p>
+                  <h3 className={`text-2xl font-black tracking-tight mb-3 ${isReview ? 'text-gray-900' : isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+                    {isReview ? 'Correct answer' : isCorrect ? 'Excellent.' : 'Not quite.'}
+                  </h3>
+                  <MathHTML className="text-[15px] text-gray-800 leading-relaxed prose prose-base max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900" html={explanationHtml} />
+                </div>
+              </aside>
+            )}
           </div>
 
           {!checked ? (
@@ -538,13 +569,12 @@ export default function LessonPage() {
               </button>
             </div>
           ) : (
-            <div className={`border-t-[3px] border-gray-900 px-4 py-3 flex items-center justify-between gap-3 flex-wrap flex-shrink-0 ${isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
-              <div className="flex-1 min-w-0">
-                <h3 className={`text-lg font-black mb-0.5 ${isReview ? 'text-gray-900' : isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+            <div className={`border-t-[3px] border-gray-900 px-4 py-3 flex items-center gap-3 flex-shrink-0 ${showExplainPanel ? 'justify-end' : 'justify-between'} ${isCorrect ? 'bg-green-100' : 'bg-red-100'}`}>
+              {!showExplainPanel && (
+                <h3 className={`text-lg font-black ${isReview ? 'text-gray-900' : isCorrect ? 'text-green-800' : 'text-red-800'}`}>
                   {isReview ? 'Correct answer' : isCorrect ? 'Excellent.' : 'Not quite.'}
                 </h3>
-                <div className="text-sm text-gray-700 leading-relaxed prose prose-base max-w-none prose-img:rounded-lg prose-img:border-2 prose-img:border-gray-900" dangerouslySetInnerHTML={{ __html: ((item.choice_explanations || [])[selected]) || item.explanation || '' }} />
-              </div>
+              )}
               <button onClick={onContinue} className={`px-7 py-2.5 text-white border-[2.5px] border-gray-900 rounded-xl font-black uppercase tracking-wide shadow-[4px_4px_0_#1a1d29] text-sm flex-shrink-0 ${isCorrect ? 'bg-green-600' : 'bg-gray-900'}`}>
                 {itemIndex + 1 < items.length ? 'Continue' : 'Finish'}
               </button>

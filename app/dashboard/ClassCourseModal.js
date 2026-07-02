@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase'
  *   onSuccess  () => void   // fired after a successful join/create so the dashboard can refresh
  *   catalog    course[]     // published courses, for the teacher's course picker
  */
-export default function ClassCourseModal({ open, onClose, onSuccess, catalog = [] }) {
+export default function ClassCourseModal({ open, onClose, onSuccess, catalog = [], initialStep = 'choose' }) {
   const [step, setStep] = useState('choose')   // 'choose' | 'student' | 'teacher'
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -29,6 +29,9 @@ export default function ClassCourseModal({ open, onClose, onSuccess, catalog = [
   const [teacherCode, setTeacherCode] = useState('')
   const [created, setCreated] = useState(null) // { code }
   const [copied, setCopied] = useState(false)
+
+  // Jump to the step the caller asked for whenever the modal opens
+  useEffect(() => { if (open) setStep(initialStep) }, [open, initialStep])
 
   if (!open) return null
 

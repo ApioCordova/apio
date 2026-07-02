@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
 import MyClasses from './MyClasses'
 import ClassCourseModal from './ClassCourseModal'
+import Onboarding from './Onboarding'
 import Announcement from './Announcement'
 
 export default function DashboardPage() {
@@ -22,6 +23,8 @@ export default function DashboardPage() {
   const [menuOpen, setMenuOpen] = useState(false)   // header "+" mini-bar
   const [pickerOpen, setPickerOpen] = useState(false) // self-study modal
   const [classModalOpen, setClassModalOpen] = useState(false) // class-course modal
+  const [classModalStep, setClassModalStep] = useState('choose') // 'choose' | 'student' | 'teacher'
+  const [showOnboarding, setShowOnboarding] = useState(false)  // first-visit welcome screen
   const [classRefresh, setClassRefresh] = useState(0) // bump to reload "Your classes"
   const [toast, setToast] = useState(null)
 
@@ -36,6 +39,7 @@ export default function DashboardPage() {
       const { data: profileData } = await supabase
         .from('profiles').select('*').eq('id', user.id).single()
       setProfile(profileData)
+      if (profileData && profileData.onboarded === false) setShowOnboarding(true)
 
       const [{ data: sectionsData }, { data: coursesData }, { data: addedRows }] = await Promise.all([
         supabase.from('sections').select('*').eq('status', 'published').order('sort_order'),
@@ -97,7 +101,17 @@ export default function DashboardPage() {
   }
 
   function openSelfStudy() { setMenuOpen(false); setPickerOpen(true) }
-  function openClassCourse() { setMenuOpen(false); setClassModalOpen(true) }
+  function openClassCourse() { setMenuOpen(false); setClassModalStep('choose'); setClassModalOpen(true) }
+
+  async function completeOnboarding(kind) {
+    setShowOnboarding(false)
+    // Mark it done so the welcome screen never shows again.
+    if (user) supabase.from('profiles').update({ onboarded: true }).eq('id', user.id).then(() => {})
+    setProfile((p) => (p ? { ...p, onboarded: true } : p))
+    if (kind === 'student') { setClassModalStep('student'); setClassModalOpen(true) }
+    else if (kind === 'teacher') { setClassModalStep('teacher'); setClassModalOpen(true) }
+    else if (kind === 'self') { setPickerOpen(true) }
+  }
 
   if (loading) {
     return (
@@ -259,12 +273,20 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* First-visit welcome screen */}
+      <Onboarding
+        open={showOnboarding}
+        onPick={completeOnboarding}
+        onSkip={() => completeOnboarding(null)}
+      />
+
       {/* Class course modal */}
       <ClassCourseModal
         open={classModalOpen}
         onClose={() => setClassModalOpen(false)}
         onSuccess={() => setClassRefresh((n) => n + 1)}
         catalog={catalog}
+        initialStep={classModalStep}
       />
 
       {/* Self-study picker modal */}
