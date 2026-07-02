@@ -27,6 +27,7 @@ export default function AdminContentPage() {
   const [dragOverIndex, setDragOverIndex] = useState(null)
   const [selectedItemIds, setSelectedItemIds] = useState(new Set())
   const [bulkSetName, setBulkSetName] = useState('')
+  const [explanationMode, setExplanationMode] = useState('single') // 'single' | 'per_choice'
 
   const canPublishDirectly = currentRole === 'admin' || currentRole === 'editor'
   const isReviewer = currentRole === 'reviewer'
@@ -55,6 +56,15 @@ export default function AdminContentPage() {
       setSelectedLevelId(null)
     }
   }, [selectedLessonId])
+
+  // While the full-screen editor is open, freeze the admin page behind it so
+  // there's only the editor's own scrollbar — not the page's ghost scrollbar.
+  useEffect(() => {
+    if (!editDraft) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [editDraft])
 
   async function loadCourses() {
     setLoading(true)
@@ -94,7 +104,15 @@ export default function AdminContentPage() {
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2200) }
 
   // ============ MODAL HELPERS ============
-  function openEditor(item) { setEditingItem(item); setEditDraft(JSON.parse(JSON.stringify(item))) }
+  function openEditor(item) {
+    setEditingItem(item)
+    setEditDraft(JSON.parse(JSON.stringify(item)))
+    // Start in whichever mode matches the saved data: if any per-choice
+    // explanation has real content, open in per-choice mode; else single.
+    const ce = item.choice_explanations || []
+    const hasPerChoice = ce.some((x) => (x || '').replace(/<[^>]*>/g, '').trim().length > 0)
+    setExplanationMode(hasPerChoice ? 'per_choice' : 'single')
+  }
   function closeEditor() { setEditingItem(null); setEditDraft(null) }
   function tryCloseEditor() {
     if (JSON.stringify(editingItem) !== JSON.stringify(editDraft)) {
@@ -104,11 +122,21 @@ export default function AdminContentPage() {
   }
 
   async function saveAndCloseQuestion() {
-    const ce = (editDraft.choices || []).map((_, i) => (editDraft.choice_explanations || [])[i] || '')
     const popupRaw = editDraft.popup || ''
     const popupHasContent = popupRaw.replace(/<[^>]*>/g, '').trim().length > 0 || /<(img|iframe|table|svg)\b/i.test(popupRaw)
+    // Per-choice mode: keep the per-choice array, clear the global fallback.
+    // Single mode: keep one global explanation, blank the per-choice array so
+    // it can't override the global one in the student player.
+    let ce, explanation
+    if (explanationMode === 'per_choice') {
+      ce = (editDraft.choices || []).map((_, i) => (editDraft.choice_explanations || [])[i] || '')
+      explanation = ''
+    } else {
+      ce = (editDraft.choices || []).map(() => '')
+      explanation = editDraft.explanation || ''
+    }
     const { error } = await supabase.from('questions').update({
-      stem: editDraft.stem, choices: editDraft.choices, choice_explanations: ce, answer: editDraft.answer, explanation: editDraft.explanation, difficulty: editDraft.difficulty || null, in_problem_set: !!editDraft.in_problem_set, popup: popupHasContent ? popupRaw : null,
+      stem: editDraft.stem, choices: editDraft.choices, choice_explanations: ce, answer: editDraft.answer, explanation, difficulty: editDraft.difficulty || null, in_problem_set: !!editDraft.in_problem_set, popup: popupHasContent ? popupRaw : null,
     }).eq('id', editDraft.id)
     if (error) { showToast('Save failed: ' + error.message); return }
     showToast('✓ Question saved'); closeEditor(); await loadItems(selectedLessonId)
@@ -421,66 +449,47 @@ export default function AdminContentPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            <div className="max-w-3xl mx-auto p-8">
-              {editDraft._kind === 'question' ? (
-                <>
+          {editDraft._kind === 'question' ? (
+            <div className="flex-1 min-h-0 flex">
+              {/* ===== LEFT: the question & answers ===== */}
+              <div className="w-1/2 overflow-y-auto border-r-[3px] border-gray-900">
+                <div className="max-w-2xl mx-auto p-6 md:p-8">
                   <Field label="Question stem">
                     <RichEditor placeholder="Enter your question here…" value={editDraft.stem || ''} onChange={(html) => setEditDraft({ ...editDraft, stem: html })} />
                   </Field>
+
                   <div className="mt-6">
                     <p className="text-xs font-mono uppercase tracking-widest text-gray-700 font-bold mb-3">Answer choices — click to mark correct</p>
                     {editDraft.choices.map((choice, i) => (
-  <div key={i} className="mb-3">
-    <div className="flex gap-3 items-center">
-      <input type="radio" name="correct-modal" checked={editDraft.answer === i} onChange={() => setEditDraft({ ...editDraft, answer: i })} className="w-6 h-6 cursor-pointer flex-shrink-0" style={{ accentColor: '#00b395' }} />
-      <span className="w-9 h-9 border-2 border-gray-900 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0" style={editDraft.answer === i ? { background: '#00b395', color: 'white' } : { background: 'white' }}>{String.fromCharCode(65 + i)}</span>
-      <input type="text" placeholder={`Option ${String.fromCharCode(65 + i)}`} value={choice} onChange={(e) => { const c = [...editDraft.choices]; c[i] = e.target.value; setEditDraft({ ...editDraft, choices: c }) }} className="flex-1 p-3 border-2 border-gray-900 rounded-lg bg-white text-base" />
-      <ChoiceMathButton value={choice} onChange={(next) => { const c = [...editDraft.choices]; c[i] = next; setEditDraft({ ...editDraft, choices: c }) }} />
-      <button type="button" onClick={() => { if (editDraft.choices.length <= 2) { alert('Minimum 2 choices.'); return }; const nc = editDraft.choices.filter((_, idx) => idx !== i); const nce = (editDraft.choice_explanations || []).filter((_, idx) => idx !== i); let na = editDraft.answer; if (na === i) na = 0; else if (na > i) na--; setEditDraft({ ...editDraft, choices: nc, choice_explanations: nce, answer: na }) }} className="px-3 py-2 text-red-600 hover:bg-red-100 rounded-lg" disabled={editDraft.choices.length <= 2}>🗑</button>
-    </div>
-    <div className="mt-2">
-      <span className="text-[11px] font-mono tracking-widest uppercase text-gray-500">
-        Why choice {String.fromCharCode(65 + i)} is {editDraft.answer === i ? 'correct' : 'wrong'} (optional)
-      </span>
-      <div className="mt-1">
-        <RichEditor
-          collapsible
-          collapsedHeight={44}
-          value={(editDraft.choice_explanations || [])[i] || ''}
-          onChange={(html) => { const ce = editDraft.choices.map((_, idx) => (editDraft.choice_explanations || [])[idx] || ''); ce[i] = html; setEditDraft({ ...editDraft, choice_explanations: ce }) }}
-        />
-      </div>
-    </div>
-  </div>
-))}
+                      <div key={i} className="flex gap-3 items-center mb-3">
+                        <input type="radio" name="correct-modal" checked={editDraft.answer === i} onChange={() => setEditDraft({ ...editDraft, answer: i })} className="w-6 h-6 cursor-pointer flex-shrink-0" style={{ accentColor: '#00b395' }} />
+                        <span className="w-9 h-9 border-2 border-gray-900 rounded-lg flex items-center justify-center font-black text-sm flex-shrink-0" style={editDraft.answer === i ? { background: '#00b395', color: 'white' } : { background: 'white' }}>{String.fromCharCode(65 + i)}</span>
+                        <input type="text" placeholder={`Option ${String.fromCharCode(65 + i)}`} value={choice} onChange={(e) => { const c = [...editDraft.choices]; c[i] = e.target.value; setEditDraft({ ...editDraft, choices: c }) }} className="flex-1 p-3 border-2 border-gray-900 rounded-lg bg-white text-base" />
+                        <ChoiceMathButton value={choice} onChange={(next) => { const c = [...editDraft.choices]; c[i] = next; setEditDraft({ ...editDraft, choices: c }) }} />
+                        <button type="button" onClick={() => { if (editDraft.choices.length <= 2) { alert('Minimum 2 choices.'); return }; const nc = editDraft.choices.filter((_, idx) => idx !== i); const nce = (editDraft.choice_explanations || []).filter((_, idx) => idx !== i); let na = editDraft.answer; if (na === i) na = 0; else if (na > i) na--; setEditDraft({ ...editDraft, choices: nc, choice_explanations: nce, answer: na }) }} className="px-3 py-2 text-red-600 hover:bg-red-100 rounded-lg" disabled={editDraft.choices.length <= 2}>🗑</button>
+                      </div>
+                    ))}
                     {editDraft.choices.length < 8 && (
                       <button type="button" onClick={() => setEditDraft({ ...editDraft, choices: [...editDraft.choices, ''], choice_explanations: [...(editDraft.choice_explanations || []), ''] })} className="mt-2 px-4 py-2 bg-white border-2 border-dashed border-gray-400 rounded-lg text-sm font-bold">+ Add choice</button>
                     )}
                   </div>
+
                   {editDraft.pool === 'practice' && (
                     <div className="mt-6">
                       <Field label="Prebuilt problem set">
-                        <button
-                          type="button"
-                          onClick={() => setEditDraft({ ...editDraft, in_problem_set: !editDraft.in_problem_set })}
-                          className="flex items-center gap-3 w-full text-left px-4 py-3 border-2 border-gray-900 rounded-xl bg-white shadow-[3px_3px_0_#1a1d29]"
-                        >
+                        <button type="button" onClick={() => setEditDraft({ ...editDraft, in_problem_set: !editDraft.in_problem_set })} className="flex items-center gap-3 w-full text-left px-4 py-3 border-2 border-gray-900 rounded-xl bg-white shadow-[3px_3px_0_#1a1d29]">
                           <span className="w-11 h-6 rounded-full border-2 border-gray-900 flex-shrink-0 relative" style={{ background: editDraft.in_problem_set ? '#8b5cf6' : '#e5e7eb' }}>
                             <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white border border-gray-900 transition-all" style={{ left: editDraft.in_problem_set ? '22px' : '2px' }} />
                           </span>
                           <span className="text-sm font-bold">
-                            {editDraft.in_problem_set
-                              ? 'Included in this lesson’s prebuilt problem set'
-                              : 'Practice pool only — tap to add to the prebuilt problem set'}
+                            {editDraft.in_problem_set ? 'Included in this lesson’s prebuilt problem set' : 'Practice pool only — tap to add to the prebuilt problem set'}
                           </span>
                         </button>
-                        <p className="text-[11px] text-gray-500 mt-1.5">
-                          Flagged questions stay in the practice pool and also appear in the lesson’s prebuilt problem set that teachers can assign.
-                        </p>
+                        <p className="text-[11px] text-gray-500 mt-1.5">Flagged questions stay in the practice pool and also appear in the lesson’s prebuilt problem set that teachers can assign.</p>
                       </Field>
                     </div>
                   )}
+
                   <div className="mt-6">
                     <Field label="Difficulty">
                       <div className="flex gap-2 flex-wrap">
@@ -508,27 +517,91 @@ export default function AdminContentPage() {
                       </div>
                     </Field>
                   </div>
-                  <div className="mt-6">
+                </div>
+              </div>
+
+              {/* ===== RIGHT: explanations & pop-up ===== */}
+              <div className="w-1/2 overflow-y-auto" style={{ background: '#eefaf6' }}>
+                <div className="max-w-2xl mx-auto p-6 md:p-8">
+                  <p className="text-xs font-mono uppercase tracking-widest text-gray-700 font-bold mb-3">Explanation</p>
+
+                  {/* Mode toggle */}
+                  <div className="flex gap-2 mb-5">
+                    <button
+                      type="button"
+                      onClick={() => setExplanationMode('single')}
+                      className={`flex-1 px-4 py-2.5 border-2 rounded-xl text-sm font-bold transition-all ${
+                        explanationMode === 'single'
+                          ? 'border-gray-900 text-white shadow-[3px_3px_0_#1a1d29]'
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-500'
+                      }`}
+                      style={explanationMode === 'single' ? { background: '#00b395' } : {}}
+                    >
+                      One explanation for all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setExplanationMode('per_choice')}
+                      className={`flex-1 px-4 py-2.5 border-2 rounded-xl text-sm font-bold transition-all ${
+                        explanationMode === 'per_choice'
+                          ? 'border-gray-900 text-white shadow-[3px_3px_0_#1a1d29]'
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-500'
+                      }`}
+                      style={explanationMode === 'per_choice' ? { background: '#00b395' } : {}}
+                    >
+                      One per answer choice
+                    </button>
+                  </div>
+
+                  {explanationMode === 'single' ? (
+                    <div>
+                      <p className="text-[11px] text-gray-500 mb-2">Shown to every student after they answer, no matter which choice they picked.</p>
+                      <RichEditor placeholder="Explain why the correct answer is correct…" value={editDraft.explanation || ''} onChange={(html) => setEditDraft({ ...editDraft, explanation: html })} />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <p className="text-[11px] text-gray-500 -mt-1">Each student sees the note for the choice they picked. Leave any blank to skip it.</p>
+                      {editDraft.choices.map((_, i) => (
+                        <div key={i}>
+                          <span className="text-[11px] font-mono tracking-widest uppercase text-gray-500">
+                            Why choice {String.fromCharCode(65 + i)} is {editDraft.answer === i ? 'correct' : 'wrong'}
+                          </span>
+                          <div className="mt-1">
+                            <RichEditor
+                              collapsible
+                              collapsedHeight={44}
+                              value={(editDraft.choice_explanations || [])[i] || ''}
+                              onChange={(html) => { const ce = editDraft.choices.map((_, idx) => (editDraft.choice_explanations || [])[idx] || ''); ce[i] = html; setEditDraft({ ...editDraft, choice_explanations: ce }) }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-8">
                     <Field label="Pop-up note (optional)">
-                      <p className="text-xs text-gray-500 mb-2">Shown to the student in a card after they check their answer, alongside the explanation. Leave empty for no pop-up.</p>
+                      <p className="text-xs text-gray-500 mb-2">Shown in an eye-catching card after the student checks their answer, alongside the explanation. Leave empty for no pop-up.</p>
                       <RichEditor placeholder="Add an optional pop-up note students see after answering…" value={editDraft.popup || ''} onChange={(html) => setEditDraft({ ...editDraft, popup: html })} />
                     </Field>
                   </div>
-                </>
-              ) : (
-                <>
-                  <Field label="Reading title">
-                    <input value={editDraft.title || ''} onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })} className="w-full p-3 border-2 border-gray-900 rounded-lg bg-white text-lg font-bold" autoFocus />
-                  </Field>
-                  <div className="mt-6">
-                    <p className="block text-xs font-mono tracking-widest uppercase text-gray-700 font-bold mb-2">Content</p>
-                    <RichEditor placeholder="Write the reading content here…" value={editDraft.content || ''} onChange={(html) => setEditDraft({ ...editDraft, content: html })} />
-                    <p className="text-xs text-gray-500 mt-2">💡 For images, paste a URL. For videos, paste a YouTube URL.</p>
-                  </div>
-                </>
-              )}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex-1 overflow-y-auto">
+              <div className="max-w-3xl mx-auto p-8">
+                <Field label="Reading title">
+                  <input value={editDraft.title || ''} onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })} className="w-full p-3 border-2 border-gray-900 rounded-lg bg-white text-lg font-bold" autoFocus />
+                </Field>
+                <div className="mt-6">
+                  <p className="block text-xs font-mono tracking-widest uppercase text-gray-700 font-bold mb-2">Content</p>
+                  <RichEditor placeholder="Write the reading content here…" value={editDraft.content || ''} onChange={(html) => setEditDraft({ ...editDraft, content: html })} />
+                  <p className="text-xs text-gray-500 mt-2">💡 For images, paste a URL. For videos, paste a YouTube URL.</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="border-t-[3px] border-gray-900 px-6 py-3 flex justify-between items-center flex-shrink-0 bg-white">
             <p className="text-xs text-gray-500 font-mono">Press Escape to cancel</p>
